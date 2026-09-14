@@ -1,0 +1,148 @@
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --color-bg: #0a0c0b;
+  --color-surface: #121614;
+  --color-elevated: #1a1f1c;
+  --color-fg: #efece4;
+  --color-muted: #979990;
+  --color-faint: #6b706a;
+  --color-border: #2a302c;
+  --color-accent: #d7ddd6;
+  --color-accent-fg: #0a0c0b;
+  --color-brick: #c45c4a;
+  --color-pine: #7d9a86;
+  --color-stone: #a39a8c;
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 26px;
+  --shadow-border: 0 0 0 1px rgb(239 236 228 / 0.08);
+  --shadow-border-hover: 0 0 0 1px rgb(239 236 228 / 0.14);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html,
+  body,
+  #app {
+    min-height: 100%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-accent-fg);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .desk-grid {
+    background-image:
+      linear-gradient(rgb(239 236 228 / 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(239 236 228 / 0.035) 1px, transparent 1px);
+    background-size: 48px 48px;
+    background-position: center top;
+  }
+
+  .diamond-wash {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgb(125 154 134 / 0.12), transparent 55%),
+      radial-gradient(ellipse 40% 30% at 100% 0%, rgb(196 92 74 / 0.08), transparent 45%);
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+      filter: blur(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+  }
+
+  .enter-stagger > * {
+    animation: fade-in-up 420ms cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  .enter-stagger > *:nth-child(1) {
+    animation-delay: 40ms;
+  }
+  .enter-stagger > *:nth-child(2) {
+    animation-delay: 120ms;
+  }
+  .enter-stagger > *:nth-child(3) {
+    animation-delay: 200ms;
+  }
+  .enter-stagger > *:nth-child(4) {
+    animation-delay: 280ms;
+  }
+  .enter-stagger > *:nth-child(5) {
+    animation-delay: 360ms;
+  }
+  .enter-stagger > *:nth-child(6) {
+    animation-delay: 440ms;
+  }
+  .enter-stagger > *:nth-child(7) {
+    animation-delay: 520ms;
+  }
+  .enter-stagger > *:nth-child(8) {
+    animation-delay: 600ms;
+  }
+  .enter-stagger > *:nth-child(9) {
+    animation-delay: 680ms;
+  }
+  .enter-stagger > *:nth-child(10) {
+    animation-delay: 760ms;
+  }
+  .enter-stagger > *:nth-child(n + 11) {
+    animation-delay: 820ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
