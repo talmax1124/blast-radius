@@ -16,9 +16,11 @@
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/mlb/score.test.ts src/lib/mlb/slips.test.ts src/lib/nfl/score.test.ts src/lib/nfl/monday.test.ts src/lib/nhl/score.test.ts src/lib/board/compose.test.ts",
+    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/mlb/score.test.ts src/lib/mlb/slips.test.ts src/lib/nfl/score.test.ts src/lib/nfl/monday.test.ts src/lib/nhl/score.test.ts src/lib/board/compose.test.ts src/lib/research/research.test.ts src/lib/research/workbench.test.ts src/lib/research/live.test.ts src/lib/research/simulation.test.ts src/lib/research/workbench-feed.test.ts",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:research": "node --experimental-strip-types --test src/lib/research/research.test.ts src/lib/research/workbench.test.ts src/lib/research/live.test.ts src/lib/research/simulation.test.ts src/lib/research/workbench-feed.test.ts && node --test scripts/daily-publish.test.mjs scripts/research-context.test.mjs",
+    "daily:run": "node scripts/run-daily.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

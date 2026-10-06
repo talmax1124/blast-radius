@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ArsenalLab, MixBar, PitchGlossaryCard, PitchTable } from "@/components/desk/arsenal-lab";
 import { EdgeGlossaryCard, EdgesLab } from "@/components/desk/edges-lab";
-import { Folio, Nameplate, Skyline } from "@/components/desk/edition";
+import { Nameplate } from "@/components/desk/edition";
 import { GradesLab } from "@/components/desk/grades-lab";
 import { SlipsLab } from "@/components/desk/slips-lab";
 import { WireLab } from "@/components/desk/wire-lab";
@@ -533,7 +533,7 @@ export function AppDesk() {
 
   return (
     <div className="min-h-dvh bg-bg">
-      <div className="h-0.5 w-full bg-brick" />
+      <a className="desk-skip" href="#desk-content">Skip to analysis</a>
       <div className="mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-8 px-4 pt-5 pb-20 sm:px-6 lg:px-8">
         <Header
           copy={edition}
@@ -545,6 +545,13 @@ export function AppDesk() {
           ledger={ledgerLabel}
         />
 
+        <div className="desk-metrics" aria-label="Analysis coverage">
+          <div className="desk-metric"><span>Games on the slate</span><strong>{slateQuery.isPending ? "—" : games.length}</strong><span>{date} · Eastern</span></div>
+          <div className="desk-metric"><span>Priced lines</span><strong>{result?.lineCount ?? "—"}</strong><span>Current analysis snapshot</span></div>
+          <div className="desk-metric"><span>Research inputs</span><strong>{result?.books?.feeds?.filter((f) => f.used && f.status === "live").length ?? "—"}</strong><span>Responding and in use</span></div>
+          <div className="desk-metric"><span>Last analysis</span><strong className="!text-lg">{result ? new Date(result.generatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) : "Awaiting run"}</strong><span>{result ? "Eastern time" : "Run the desk to begin"}</span></div>
+        </div>
+        <div id="desk-content" tabIndex={-1} />
         <SlateRow games={games} loading={slateQuery.isPending && games.length === 0} />
 
         {busy ? <LoadingBoard stage={stage} /> : null}
@@ -728,9 +735,11 @@ function Header({
 }) {
   return (
     <header className="flex flex-col gap-4">
-      <Folio copy={copy} />
-      <Skyline copy={copy} />
       <Nameplate />
+      <div className="desk-hero">
+        <div><span className="desk-eyebrow">Baseball / Daily intelligence</span><h1>The game behind<br />the numbers.</h1><p>{copy.deck}</p></div>
+        <a href="/research" className="text-sm text-pine hover:underline">Open the research desk ↗</a>
+      </div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-faint tabular-nums">
           {gameCount} game{gameCount === 1 ? "" : "s"} · Eastern · Home run desk
@@ -750,7 +759,7 @@ function Header({
           </label>
           <Button size="lg" onClick={onAnalyze} disabled={loading} className="w-full min-w-0 sm:w-auto">
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Radar className="size-4" />}
-            {loading ? "Posting" : "Fetch & analyze"}
+            {loading ? "Analyzing…" : "Run analysis"}
           </Button>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { loadPublishedBoards } from "@/lib/research/functions";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, Radar } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -14,24 +15,11 @@ import {
   tennisLegs,
 } from "@/lib/board/compose";
 import { applyLedger, reportOf, toLedger } from "@/lib/board/grade";
-import {
-  growthCurve,
-  kellyRow,
-  kellyRisk,
-  lift,
-  optimizeSimultaneous,
-  peakGrowth,
-  simultaneousGrowth,
-  sizedBets,
-  toAmerican,
-  type KellyBet,
-} from "@/lib/board/kelly";
 import { buildPrice, formatAmerican, oddsBrief, parseAmerican, spreadRead } from "@/lib/board/odds";
 import type { SlateBoard } from "@/lib/board/slate";
 import type { BoardLeg, BoardSlip, LedgerLeg, Sport, SpotSize, TennisMatch } from "@/lib/board/types";
 import type { AnalysisResult, SlipCard } from "@/lib/mlb/types";
 import { analyzeNfl } from "@/lib/nfl/functions";
-import { SUNDAY_NFL } from "@/lib/nfl/sunday";
 import { RZM } from "@/lib/nfl/score";
 import type { NflBoard } from "@/lib/nfl/types";
 import { analyzeNhl } from "@/lib/nhl/functions";
@@ -39,7 +27,8 @@ import { ICE } from "@/lib/nhl/score";
 import type { NhlBoard } from "@/lib/nhl/types";
 import { cn } from "@/lib/utils";
 
-const LEDGER_KEY = "great-run:board-ledger-1";
+// Keep the legacy mixed/manual ledger untouched, but never reuse accidental grades.
+const LEDGER_KEY = "great-run:board-auto-ledger-2";
 const NHL_KEY = "great-run:nhl-board-2";
 const NFL_KEY = "great-run:nfl-board-1";
 const MLB_KEY = "great-run:last-analysis-32";
@@ -88,9 +77,7 @@ function pct(n: number): string {
   return `${Math.round(n * 100)}%`;
 }
 
-function share(n: number): string {
-  return `${(n * 100).toFixed(1)}%`;
-}
+
 
 function heatClass(p: number): string {
   if (p >= 0.75) return "bg-pine text-ink";
@@ -152,21 +139,32 @@ export function BoardDesk() {
     if (savedMlb?.result?.slips) setMlb({ date: savedMlb.date, slips: savedMlb.result.slips });
     setLedger(loadJson<LedgerLeg[]>(LEDGER_KEY) ?? []);
     setBooted(true);
-    if (!savedNhl) nhlRun.mutate();
-    if (!savedNfl) nflRun.mutate();
-    tennisRun.mutate();
-    slateRun.mutate();
+    void loadPublishedBoards().then((published) => {
+      if (published.nhl) setNhl(published.nhl);
+      else if (!savedNhl || savedNhl.date !== published.date) nhlRun.mutate();
+      if (published.nfl) setNfl(published.nfl);
+      else if (!savedNfl || savedNfl.date !== published.date) nflRun.mutate();
+      if (published.mlb) setMlb({ date: published.date, slips: published.mlb.slips });
+      if (published.board) { setSlate(published.board.slate); setTennis(published.board.tennis); }
+      else { tennisRun.mutate(); slateRun.mutate(); }
+    }).catch(() => {
+      if (!savedNhl) nhlRun.mutate();
+      if (!savedNfl) nflRun.mutate();
+      tennisRun.mutate();
+      slateRun.mutate();
+    });
     // Cached NHL and NFL stay until Fetch. Tennis and the new slates refresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    if (!booted) return;
     try {
       localStorage.setItem(LEDGER_KEY, JSON.stringify(ledger.slice(0, 400)));
     } catch {
       /* ignore */
     }
-  }, [ledger]);
+  }, [ledger, booted]);
 
   const date = slate?.date || nhl?.date || nfl?.date || mlb?.date || "";
 
@@ -249,30 +247,6 @@ export function BoardDesk() {
     return scopedPrices.sort((a, b) => b.fair - a.fair).slice(0, 10);
   }, [nhl, slate, facet]);
   const brief = oddsBrief(prices);
-  const kelly = useMemo(() => {
-    const bets: KellyBet[] = SUNDAY_NFL.legs.map((leg) => ({
-      label: leg.player,
-      p: leg.p,
-      american: toAmerican(leg.price),
-    }));
-    const parlayP = bets.reduce((chance, bet) => chance * bet.p, 1);
-    const parlayAmerican = toAmerican(SUNDAY_NFL.price);
-    const curve = growthCurve(parlayP, parlayAmerican);
-    const sized = sizedBets(bets);
-    return {
-      legs: bets.map((bet, index) => ({ ...kellyRow(bet), prop: SUNDAY_NFL.legs[index].prop })),
-      parlay: kellyRow({ label: "Parlay", p: parlayP, american: parlayAmerican }),
-      curve,
-      peak: peakGrowth(curve),
-      singles: optimizeSimultaneous(sized),
-      halfSingles: simultaneousGrowth(sized, 0.5),
-      risk: kellyRisk(sized),
-      passed: bets.filter((bet) => !sized.includes(bet)).map((bet) => bet.label),
-    };
-  }, []);
-  const priceKelly = prices.map((card) =>
-    kellyRow({ label: `${card.sport.toUpperCase()} ${card.favorite}`, p: card.fair, american: card.american }),
-  );
   const spreads = (facet === "all" || facet === "nfl" ? (nfl?.games ?? []) : [])
     .map((game) => {
       const row = game.spreadLabel ? spreadRead(game.spreadLabel) : null;
@@ -297,10 +271,6 @@ export function BoardDesk() {
     if (games == null) return "…";
     if (id === "mlb" && mlb) return `${games} · card`;
     return String(games);
-  }
-
-  function mark(leg: BoardLeg, result: "hit" | "miss") {
-    setLedger((prev) => [toLedger(leg, result), ...prev.filter((row) => row.id !== leg.id)]);
   }
 
   function refresh() {
@@ -418,13 +388,16 @@ export function BoardDesk() {
               <p className="font-serif mt-2 text-base text-ink/70 italic">{pct(slip.sweep)} to sweep. One player per game.</p>
               <ul className="mt-4 flex flex-col">
                 {slip.legs.map((leg) => (
-                  <SlipRow key={leg.id} leg={leg} onMark={mark} />
+                  <SlipRow key={leg.id} leg={leg} />
                 ))}
               </ul>
             </>
           ) : (
             <p className="font-serif mt-4 text-base text-ink/70 italic">{emptyCopy}</p>
           )}
+          <p className="mt-4 text-xs leading-relaxed text-ink/60">
+            Results update from game data. Manual grading is disabled; previous manual marks no longer affect this board.
+          </p>
           {waiting.length > 0 ? (
             <p className="mt-4 text-xs leading-relaxed text-ink/45">
               Waiting on a price: {waiting.map((game) => `${game.sport.toUpperCase()} ${game.label}`).join(", ")}.
@@ -539,126 +512,16 @@ export function BoardDesk() {
         ) : null}
       </section>
 
-      <section className="flex flex-col gap-3">
-        <SectionFlag>Kelly</SectionFlag>
-        <div className="grid gap-px bg-border lg:grid-cols-[minmax(0,1.2fr)_minmax(16rem,0.8fr)]">
-          <article className="bg-paper px-5 py-6 text-ink sm:px-7">
-            <p className="kicker text-ink/45">Stake the edge</p>
-            <h2 className="font-display mt-2 text-3xl leading-tight font-semibold tracking-tight">Size the room, not the favorite</h2>
-            <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink/80">
-              Updated to this morning’s prices. Detroit is at Carolina. Arizona is at the Giants. New England is at Buffalo.
-              {kelly.passed.length ? ` ${kelly.passed.join(", ")} is off the stake: today's price leaves less than 5 points of room.` : ""} The
-              sized legs put {share(kelly.risk.exposed)} of the bankroll in play and grow it about {share(lift(kelly.halfSingles))} a slate. The{" "}
-              {formatAmerican(kelly.parlay.american)} figure is the three prices multiplied, not a ticket a book has posted.
-            </p>
-            <ul className="mt-5 flex flex-col border-t border-ink/10">
-              {kelly.legs.map((row) => (
-                <li key={row.label} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-ink/10 py-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{row.label}</p>
-                    <p className="text-xs text-ink/50">{row.prop}</p>
-                  </div>
-                  <p className="text-right text-xs tabular-nums text-ink/70">
-                    {formatAmerican(row.american)} · {pct(row.p)}
-                    <span className="mt-1 block text-ink">
-                      {kelly.passed.includes(row.label) ? "Pass" : `Half ${share(row.half)}`}
-                    </span>
-                  </p>
-                </li>
-              ))}
-              <li className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-3">
-                <div>
-                  <p className="text-sm font-medium">Parlay</p>
-                  <p className="text-xs text-ink/50">Needs all three. Break-even {pct(kelly.parlay.breakeven)}.</p>
-                </div>
-                <p className="text-right text-xs tabular-nums text-ink/70">
-                  {formatAmerican(kelly.parlay.american)} · {pct(kelly.parlay.p)}
-                  <span className="mt-1 block text-ink">Full {share(kelly.parlay.stake)}</span>
-                </p>
-              </li>
-            </ul>
-          </article>
-          <aside className="bg-surface px-5 py-5">
-            <p className="kicker">Parlay growth</p>
-            <p className="mt-2 text-xs leading-relaxed text-faint">
-              Each bar is expected bankroll growth at a multiple of full Kelly. The peak is the optimum. Past it, a bigger stake grows less.
-            </p>
-            <ul className="mt-4 flex flex-col gap-2">
-              {kelly.curve.map((point) => {
-                const width = kelly.peak.growth > 0 ? Math.max(0, (point.growth / kelly.peak.growth) * 100) : 0;
-                const onPeak = point.multiple === kelly.peak.multiple;
-                const label = point.multiple === 0 ? "0" : point.multiple === 1 ? "Full" : point.multiple < 1 ? `${point.multiple}` : `${point.multiple}×`;
-                return (
-                  <li key={point.multiple}>
-                    <div className="flex items-baseline justify-between text-xs text-muted">
-                      <span className={onPeak ? "text-fg" : undefined}>{label}</span>
-                      <span className="tabular-nums text-fg">{share(lift(point.growth))}</span>
-                    </div>
-                    <div className="mt-1 h-2 bg-elevated">
-                      <div className={cn("h-2", onPeak ? "bg-pine" : "bg-stone")} style={{ width: `${width}%` }} />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-            <p className="mt-4 text-xs leading-relaxed text-faint">
-              Together, the singles peak at {share(kelly.singles.scale)} of full Kelly, a {share(lift(kelly.singles.growth))} lift. That stake is
-              only right if the chances are exact.
-            </p>
-          </aside>
-        </div>
-        <div className="border border-border bg-surface px-5 py-4">
-          <p className="kicker">Posted moneylines</p>
-          {priceKelly.length === 0 ? (
-            <p className="mt-2 text-sm text-muted">No posted price on this cut, so there is nothing to size.</p>
-          ) : priceKelly.every((row) => row.stake === 0) ? (
-            <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted">
-              Kelly’s stake is zero. The no-vig chance is the book’s own number, and it sits under the break-even of the American price. A
-              favorite is not an edge.
-            </p>
-          ) : null}
-          {priceKelly.some((row) => row.stake > 0) ? (
-            <ul className="mt-3 flex flex-col">
-              {priceKelly
-                .filter((row) => row.stake > 0)
-                .map((row) => (
-                  <li key={row.label} className="flex items-baseline justify-between gap-3 border-t border-border py-2 text-sm">
-                    <span className="text-fg">{row.label}</span>
-                    <span className="tabular-nums text-muted">Half {share(row.half)} · break-even {pct(row.breakeven)}</span>
-                  </li>
-                ))}
-            </ul>
-          ) : null}
-        </div>
-        <div className="grid gap-px bg-border sm:grid-cols-3">
-          <article className="bg-surface px-4 py-4">
-            <p className="kicker">Thin edge</p>
-            <p className="font-display mt-2 text-3xl font-semibold text-fg">{kelly.risk.thinnest}</p>
-            <p className="mt-2 text-xs leading-relaxed text-faint">
-              {share(kelly.risk.cushion)} of room over the price. Miss the chance by that much and the leg is a losing bet sized as a winner.
-            </p>
-          </article>
-          <article className="bg-surface px-4 py-4">
-            <p className="kicker">Down week</p>
-            <p className="font-display mt-2 text-3xl font-semibold tabular-nums text-fg">{pct(kelly.risk.pDown)}</p>
-            <p className="mt-2 text-xs leading-relaxed text-faint">
-              of Sundays end smaller, even when the chances are right. The worst gives back {share(kelly.risk.worstLoss)}. The sized legs miss together on {share(kelly.risk.pWorst)} of slates.
-            </p>
-          </article>
-          <article className="bg-surface px-4 py-4">
-            <p className="kicker">Wrong chance</p>
-            <p className="font-display mt-2 text-3xl font-semibold tabular-nums text-fg">
-              {share(lift(kelly.risk.shock.find((row) => row.cut === 0.05)?.growth ?? 0))}
-              <span className="ml-1 text-base font-medium text-muted">left</span>
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-faint">
-              of growth is left if every chance is 5 points too high. At 8 points it is {share(lift(kelly.risk.shock.find((row) => row.cut === 0.08)?.growth ?? 0))}. The stake was built on the higher number.
-            </p>
-          </article>
-        </div>
-        <p className="text-xs leading-relaxed text-faint">
-          Across 20 slates, a 25% hole shows up in {pct(kelly.risk.drawdownHalf)} of paths at half Kelly and {pct(kelly.risk.drawdownFull)} at full Kelly. Dropping the thin leg costs a little growth and takes that error off the book.
+      <section className="panel p-5">
+        <p className="kicker">Evidence before a projection</p>
+        <h2 className="mt-2 text-xl font-medium">Research the matchup</h2>
+        <p className="mt-2 text-sm text-muted">
+          Inspect game logs, reported lineups, injuries, and market prices. Historical hit rates
+          describe the sample; they are not a calibrated forecast.
         </p>
+        <a className="mt-4 inline-block text-sm text-pine hover:underline" href="/research">
+          Open the research workbench →
+        </a>
       </section>
 
       <section className="flex flex-col gap-3">
@@ -738,7 +601,7 @@ export function BoardDesk() {
                   {leg.sport.toUpperCase()} · {leg.prop}
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-faint">{leg.note}</p>
-                <GradeButtons leg={leg} onMark={mark} />
+                <GradeStatus leg={leg} />
               </li>
             ))}
           </ul>
@@ -814,7 +677,7 @@ function Filter({ active, children, onClick }: { active: boolean; children: stri
   );
 }
 
-function SlipRow({ leg, onMark }: { leg: BoardLeg; onMark: (leg: BoardLeg, result: "hit" | "miss") => void }) {
+function SlipRow({ leg }: { leg: BoardLeg }) {
   return (
     <li className="border-t border-ink/10 py-3">
       <div className="flex items-baseline justify-between gap-3">
@@ -825,40 +688,16 @@ function SlipRow({ leg, onMark }: { leg: BoardLeg; onMark: (leg: BoardLeg, resul
         {leg.sport.toUpperCase()} · {leg.team} · {leg.prop}
       </p>
       <p className="mt-1 text-xs leading-relaxed text-ink/45">{leg.note}</p>
-      <GradeButtons leg={leg} onMark={onMark} ink />
+      <GradeStatus leg={leg} ink />
     </li>
   );
 }
 
-function GradeButtons({
-  leg,
-  onMark,
-  ink = false,
-}: {
-  leg: BoardLeg;
-  onMark: (leg: BoardLeg, result: "hit" | "miss") => void;
-  ink?: boolean;
-}) {
-  const settled = leg.settled;
+function GradeStatus({ leg, ink = false }: { leg: BoardLeg; ink?: boolean }) {
+  if (!leg.settled) return null;
   return (
-    <div className="mt-2 flex gap-2">
-      <button
-        type="button"
-        onClick={() => onMark(leg, "hit")}
-        className={cn("h-9 px-3 text-xs", settled === "hit" ? "bg-pine text-ink" : ink ? "text-ink/50" : "text-muted hover:text-fg")}
-      >
-        Hit
-      </button>
-      <button
-        type="button"
-        onClick={() => onMark(leg, "miss")}
-        className={cn(
-          "h-9 px-3 text-xs",
-          settled === "miss" ? "bg-brick text-paper" : ink ? "text-ink/50" : "text-muted hover:text-fg",
-        )}
-      >
-        Miss
-      </button>
-    </div>
+    <p className={cn("mt-2 text-xs", ink ? "text-ink/60" : "text-muted")}>
+      Source result: {leg.settled === "hit" ? "Won" : "Lost"}
+    </p>
   );
 }

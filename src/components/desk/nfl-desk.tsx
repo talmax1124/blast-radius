@@ -1,15 +1,14 @@
+import { loadPublishedBoards } from "@/lib/research/functions";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, Radar } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Nameplate } from "@/components/desk/edition";
-import { SundaySlip } from "@/components/desk/sunday-slip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { analyzeNfl } from "@/lib/nfl/functions";
-import { mondayReport } from "@/lib/nfl/monday";
 import { RZM } from "@/lib/nfl/score";
 import { marketLabel } from "@/lib/nfl/slips";
 import type { ListedProp, MatchSheet, NflBoard, NflMarket, NflPick, NflSlip, SheetPlayer } from "@/lib/nfl/types";
@@ -81,7 +80,10 @@ export function NflDesk() {
     const saved = loadSaved();
     if (saved) setBoard(saved);
     setBooted(true);
-    if (!saved) run.mutate();
+    void loadPublishedBoards().then((published) => {
+      if (published.nfl) setBoard(published.nfl);
+      else if (!saved || saved.date !== published.date) run.mutate();
+    }).catch(() => { if (!saved) run.mutate(); });
     // First visit posts the board. A saved card stays until Fetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -118,9 +120,7 @@ export function NflDesk() {
         </div>
       </header>
 
-      <SundaySlip />
 
-      <MondayCard />
 
       {run.isPending && !board ? (
         <div className="flex flex-col gap-4">
@@ -209,57 +209,6 @@ export function NflDesk() {
         </SheetContent>
       </Sheet>
     </main>
-  );
-}
-
-function MondayCard() {
-  const card = mondayReport();
-  return (
-    <section className="panel overflow-hidden">
-      <div className="border-b border-border px-4 py-4 sm:px-5">
-        <p className="kicker">Monday perfect 4</p>
-        <h2 className="font-display mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Eagles at Bears</h2>
-        <p className="mt-1 text-sm text-muted">
-          {card.detail} · {card.spread} · total {card.total}
-        </p>
-        <p className="mt-3 max-w-prose text-sm leading-relaxed text-muted">{card.script}</p>
-        <p className="mt-3 text-xs tabular-nums text-faint">
-          {card.sims.toLocaleString()} correlated games · sweep {pct(card.sweep)} · if it blows out {pct(card.sweepIfBlowout)} · if it’s one score{" "}
-          {pct(card.sweepIfClose)} · blowout itself {pct(card.blowout)}
-        </p>
-      </div>
-      <ol className="flex flex-col divide-y divide-border">
-        {card.legs.map((leg, index) => (
-          <li key={leg.id} className="px-4 py-3 sm:px-5">
-            <div className="flex items-baseline justify-between gap-3">
-              <h3 className="min-w-0 font-medium">
-                <span className="mr-2 tabular-nums text-faint">{index + 1}</span>
-                {leg.player}
-              </h3>
-              <span className="shrink-0 text-sm tabular-nums text-pine">{pct(leg.p)}</span>
-            </div>
-            <p className="mt-1 text-xs text-faint">
-              {leg.team} · {leg.pos} · {leg.label} over {leg.line}
-              <span className="text-muted"> · sim {num1(leg.mean)}</span>
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-muted">{leg.why}</p>
-          </li>
-        ))}
-      </ol>
-      <div className="border-t border-border px-4 py-3 sm:px-5">
-        <p className="kicker">Left off</p>
-        <ul className="mt-2 flex flex-col gap-2 text-xs leading-relaxed text-faint">
-          {card.traps.map((trap) => (
-            <li key={trap}>{trap}</li>
-          ))}
-        </ul>
-        <p className="mt-3 text-xs leading-relaxed text-faint">
-          Standard numbers only. A demon raises the multiplier and is how a perfect card dies. The Purple token pays the fee back in credits only if the
-          entry goes 4/4 and does not also earn Extra Winnings. One miss and the token pays nothing. Opt in before 11:00 PM ET. Pick6 lines can sit a half
-          yard off these.
-        </p>
-      </div>
-    </section>
   );
 }
 

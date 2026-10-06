@@ -119,11 +119,7 @@ function injuryMult(status: unknown): number {
 }
 
 /** Official tag is still doubtful. He did not practice and is not in the game plan. */
-const RULED_OUT = new Set(["Puka Nacua"]);
 
-function applySits(people: Person[]): Person[] {
-  return people.map((p) => (RULED_OUT.has(p.name) ? { ...p, injury: 0, status: "Out" } : p));
-}
 
 type Person = {
   id: string;
@@ -717,7 +713,7 @@ export async function buildNflBoard(date = todayEt()): Promise<NflBoard> {
     ),
   ]);
 
-  const people = applySits(rosterFeed);
+  const people = rosterFeed;
   const latest = Math.max(1, ...priorWeeks);
   const teamWeek = new Map<string, Map<number, WeekLine>>();
   const playerWeeks = new Map<string, { week: number; line: WeekLine }[]>();

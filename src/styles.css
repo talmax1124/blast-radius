@@ -3,19 +3,19 @@
 @import "tw-animate-css";
 
 @theme {
-  --color-bg: #0b0c0b;
-  --color-surface: #141714;
-  --color-elevated: #1b201c;
+  --color-bg: #101512;
+  --color-surface: #19201b;
+  --color-elevated: #242d26;
   --color-fg: #f3efe6;
   --color-paper: #efece4;
   --color-ink: #0c0e0c;
   --color-muted: #9a9d94;
-  --color-faint: #6d726c;
+  --color-faint: #91988e;
   --color-border: #2c322e;
-  --color-accent: #efece4;
+  --color-accent: #b5cd92;
   --color-accent-fg: #0c0e0c;
   --color-brick: #c45c4a;
-  --color-pine: #7d9a86;
+  --color-pine: #b5cd92;
   --color-stone: #a39a8c;
   --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --font-serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
@@ -175,5 +175,169 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Shared desk shell: readable data, compact navigation, and clear focus states. */
+.desk-masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 1.4rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.desk-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+.desk-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.85rem;
+  background: var(--color-pine);
+  color: var(--color-ink);
+  font: 600 1.75rem var(--font-serif);
+  letter-spacing: -0.08em;
+}
+.desk-brand strong {
+  display: block;
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+}
+.desk-brand small {
+  display: block;
+  color: var(--color-muted);
+  font-size: 0.72rem;
+}
+.desk-navigation {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.desk-navigation a {
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.5rem;
+  white-space: nowrap;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+.desk-navigation a:hover {
+  background: var(--color-elevated);
+  color: var(--color-fg);
+}
+.desk-navigation a[aria-current="page"] {
+  background: var(--color-elevated);
+  color: var(--color-pine);
+}
+:where(a, button, input, select, summary, [role="tab"]):focus-visible {
+  outline: 2px solid var(--color-pine);
+  outline-offset: 4px;
+}
+.desk-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 2rem;
+  padding: 1.5rem 0 0.5rem;
+}
+.desk-hero h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(2.7rem, 5vw, 4.5rem);
+  line-height: 1.03;
+  letter-spacing: -0.045em;
+  margin: 0.65rem 0 0.8rem;
+}
+.desk-hero p {
+  max-width: 40rem;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+.desk-eyebrow {
+  font-family: var(--font-mono);
+  color: var(--color-pine);
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+}
+.desk-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--color-border);
+  border-radius: 0.9rem;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+.desk-metric {
+  padding: 1.2rem 1.4rem;
+  border-right: 1px solid var(--color-border);
+}
+.desk-metric:last-child {
+  border-right: 0;
+}
+.desk-metric strong {
+  display: block;
+  font-size: 1.65rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  margin: 0.2rem 0;
+}
+.desk-metric span {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+}
+.desk-skip {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  transform: translateY(-200%);
+  z-index: 50;
+  padding: 0.7rem 1rem;
+  background: var(--color-pine);
+  color: var(--color-ink);
+}
+.desk-skip:focus {
+  transform: translateY(0);
+}
+@media (max-width: 720px) {
+  .desk-masthead {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0.7rem 0 1rem;
+  }
+  .desk-navigation {
+    width: 100%;
+  }
+  .desk-navigation a {
+    padding: 0.6rem 0.7rem;
+  }
+  .desk-hero {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .desk-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .desk-metric {
+    padding: 1rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .desk-metric:nth-child(2n) {
+    border-right: 0;
+  }
+  .desk-metric:nth-last-child(-n + 2) {
+    border-bottom: 0;
   }
 }
