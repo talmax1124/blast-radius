@@ -1,8 +1,8 @@
-import { num, int, clamp, parseCsv } from "./parse";
+import { num, int, clamp, parseCsv, hourEt } from "./parse";
 import { normAbbr } from "./parks";
 import type { PitcherHandSplit, SplitCard } from "./types";
 
-const UA = "BlastRadius/1.3 (home-run desk)";
+const UA = "GreatRun/3.3 (home-run desk)";
 const MLB = "https://statsapi.mlb.com/api/v1";
 
 type CacheEntry<T> = { expires: number; value: T };
@@ -18,9 +18,13 @@ function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T>
 }
 
 async function csv(url: string): Promise<Record<string, string>[]> {
+  return csvLong(url, 16000);
+}
+
+async function csvLong(url: string, timeoutMs: number): Promise<Record<string, string>[]> {
   const res = await fetch(url, {
     headers: { Accept: "text/csv", "User-Agent": UA },
-    signal: AbortSignal.timeout(16000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw new Error(`Savant ${res.status}`);
   return parseCsv(await res.text());
@@ -105,6 +109,8 @@ export type CatcherRow = {
   attempts: number;
 };
 
+export type HrClock = { hours: number[]; lastDate: string | null; n: number };
+
 export type EdgeMaps = {
   sprint: Map<number, SprintRow>;
   batted: Map<number, BattedRow>;
@@ -112,8 +118,13 @@ export type EdgeMaps = {
   catcherByTeam: Map<string, CatcherRow>;
   batterHands: Map<number, { vl: SplitCard | null; vr: SplitCard | null }>;
   batterHA: Map<number, { h: SplitCard | null; a: SplitCard | null }>;
+  batterDN: Map<number, { d: SplitCard | null; n: SplitCard | null }>;
   pitcherHands: Map<number, { vl: PitcherHandSplit | null; vr: PitcherHandSplit | null }>;
   teamObp: Map<number, number>;
+  hrClock: Map<number, HrClock>;
+  leagueHours: number[];
+  leagueDayHrPa: number;
+  leagueNightHrPa: number;
 };
 
 function emptyMaps(): EdgeMaps {
@@ -124,19 +135,24 @@ function emptyMaps(): EdgeMaps {
     catcherByTeam: new Map(),
     batterHands: new Map(),
     batterHA: new Map(),
+    batterDN: new Map(),
     pitcherHands: new Map(),
     teamObp: new Map(),
+    hrClock: new Map(),
+    leagueHours: [],
+    leagueDayHrPa: 0.032,
+    leagueNightHrPa: 0.035,
   };
 }
 
 export async function loadEdgeMaps(season: number): Promise<EdgeMaps> {
-  return cached(`edges:${season}:v1`, 20 * 60_000, () => fetchEdgeMaps(season));
+  return cached(`edges:${season}:v2`, 20 * 60_000, () => fetchEdgeMaps(season));
 }
 
 async function fetchEdgeMaps(season: number): Promise<EdgeMaps> {
   const maps = emptyMaps();
 
-  const [sprint, batted, run, catcher, hitVl, hitVr, hitH, hitA, pitVl, pitVr, teamHit] = await Promise.allSettled([
+  const [sprint, batted, run, catcher, hitVl, hitVr, hitH, hitA, hitD, hitN, pitVl, pitVr, teamHit, clock] = await Promise.allSettled([
     csv(`https://baseballsavant.mlb.com/leaderboard/sprint_speed?year=${season}&position=&team=&min=0&csv=true`),
     csv(`https://baseballsavant.mlb.com/leaderboard/batted-ball?type=batter&year=${season}&min=1&csv=true`),
     csv(`https://baseballsavant.mlb.com/leaderboard/pitcher-running-game?year=${season}&team=&min=0&csv=true`),
@@ -145,9 +161,12 @@ async function fetchEdgeMaps(season: number): Promise<EdgeMaps> {
     mlbStats(`/stats?stats=statSplits&group=hitting&season=${season}&sportId=1&sitCodes=vr&limit=800&playerPool=all`),
     mlbStats(`/stats?stats=statSplits&group=hitting&season=${season}&sportId=1&sitCodes=h&limit=800&playerPool=all`),
     mlbStats(`/stats?stats=statSplits&group=hitting&season=${season}&sportId=1&sitCodes=a&limit=800&playerPool=all`),
+    mlbStats(`/stats?stats=statSplits&group=hitting&season=${season}&sportId=1&sitCodes=d&limit=800&playerPool=all`),
+    mlbStats(`/stats?stats=statSplits&group=hitting&season=${season}&sportId=1&sitCodes=n&limit=800&playerPool=all`),
     mlbStats(`/stats?stats=statSplits&group=pitching&season=${season}&sportId=1&sitCodes=vl&limit=800&playerPool=all`),
     mlbStats(`/stats?stats=statSplits&group=pitching&season=${season}&sportId=1&sitCodes=vr&limit=800&playerPool=all`),
     mlbStats(`/teams/stats?season=${season}&group=hitting&stats=season&sportIds=1`),
+    fetchHrClock(season),
   ]);
 
   if (sprint.status === "fulfilled") {
@@ -232,6 +251,31 @@ async function fetchEdgeMaps(season: number): Promise<EdgeMaps> {
   fillHA(hitH, "h");
   fillHA(hitA, "a");
 
+  const fillDN = (payload: PromiseSettledResult<StatSplit[]>, code: "d" | "n") => {
+    if (payload.status !== "fulfilled") return;
+    let hr = 0;
+    let pa = 0;
+    for (const split of payload.value) {
+      const id = split.player?.id;
+      if (!id) continue;
+      const card = splitCard(split.stat);
+      const prev = maps.batterDN.get(id) ?? { d: null, n: null };
+      prev[code] = card;
+      maps.batterDN.set(id, prev);
+      if (card && card.pa >= 20) {
+        hr += card.hr;
+        pa += card.pa;
+      }
+    }
+    if (pa >= 4000) {
+      const rate = hr / pa;
+      if (code === "d") maps.leagueDayHrPa = rate;
+      else maps.leagueNightHrPa = rate;
+    }
+  };
+  fillDN(hitD, "d");
+  fillDN(hitN, "n");
+
   const fillPitch = (payload: PromiseSettledResult<StatSplit[]>, code: "vl" | "vr") => {
     if (payload.status !== "fulfilled") return;
     for (const split of payload.value) {
@@ -254,5 +298,70 @@ async function fetchEdgeMaps(season: number): Promise<EdgeMaps> {
     }
   }
 
+  if (clock.status === "fulfilled") {
+    maps.hrClock = clock.value.byPlayer;
+    maps.leagueHours = clock.value.hours;
+  }
+
   return maps;
+}
+
+async function fetchHrClock(season: number): Promise<{ byPlayer: Map<number, HrClock>; hours: number[] }> {
+  const [hourByPk, rows] = await Promise.all([
+    fetchScheduleHours(season),
+    csvLong(
+      `https://baseballsavant.mlb.com/statcast_search/csv?all=true&hfAB=home%5C.%5C.run%7C&hfGT=R%7C&hfSea=${season}%7C&player_type=batter&min_pitches=0&type=details&min_pas=0&game_date_gt=${season}-04-01`,
+      26000,
+    ),
+  ]);
+  const byPlayer = new Map<number, HrClock>();
+  const hours: number[] = [];
+  for (const row of rows) {
+    const id = Math.round(num(row.batter || row.player_id || row.playerId));
+    if (!id) continue;
+    const pk = Math.round(num(row.game_pk || row.gamePk));
+    const hour = hourByPk.get(pk);
+    const date = (row.game_date || row.gameDate || "").slice(0, 10);
+    const prev = byPlayer.get(id) ?? { hours: [], lastDate: null, n: 0 };
+    if (hour != null) {
+      prev.hours.push(hour);
+      hours.push(hour);
+    }
+    if (date && (!prev.lastDate || date > prev.lastDate)) prev.lastDate = date;
+    prev.n += 1;
+    byPlayer.set(id, prev);
+  }
+  return { byPlayer, hours };
+}
+
+async function fetchScheduleHours(season: number): Promise<Map<number, number>> {
+  const windows: Array<[string, string]> = [
+    [`${season}-03-20`, `${season}-05-31`],
+    [`${season}-06-01`, `${season}-07-31`],
+    [`${season}-08-01`, `${season}-10-06`],
+  ];
+  const map = new Map<number, number>();
+  await Promise.all(
+    windows.map(async ([start, end]) => {
+      const res = await fetch(
+        `${MLB}/schedule?sportId=1&startDate=${start}&endDate=${end}&sportIds=1&gameTypes=R`,
+        {
+          headers: { Accept: "application/json", "User-Agent": UA },
+          signal: AbortSignal.timeout(16000),
+        },
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        dates?: Array<{ games?: Array<{ gamePk?: number; gameDate?: string }> }>;
+      };
+      for (const day of data.dates ?? []) {
+        for (const g of day.games ?? []) {
+          const pk = g.gamePk;
+          const hour = hourEt(g.gameDate);
+          if (pk && hour != null) map.set(pk, hour);
+        }
+      }
+    }),
+  );
+  return map;
 }

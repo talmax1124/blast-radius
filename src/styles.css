@@ -1,29 +1,33 @@
-@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;0,6..72,800;1,6..72,400;1,6..72,500;1,6..72,600&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @theme {
-  --color-bg: #0a0c0b;
-  --color-surface: #121614;
-  --color-elevated: #1a1f1c;
-  --color-fg: #efece4;
-  --color-muted: #979990;
-  --color-faint: #6b706a;
-  --color-border: #2a302c;
-  --color-accent: #d7ddd6;
-  --color-accent-fg: #0a0c0b;
+  --color-bg: #0b0c0b;
+  --color-surface: #141714;
+  --color-elevated: #1b201c;
+  --color-fg: #f3efe6;
+  --color-paper: #efece4;
+  --color-ink: #0c0e0c;
+  --color-muted: #9a9d94;
+  --color-faint: #6d726c;
+  --color-border: #2c322e;
+  --color-accent: #efece4;
+  --color-accent-fg: #0c0e0c;
   --color-brick: #c45c4a;
   --color-pine: #7d9a86;
   --color-stone: #a39a8c;
   --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --font-display: "Barlow Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --font-serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-display: "Newsreader", "Iowan Old Style", Georgia, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 26px;
-  --shadow-border: 0 0 0 1px rgb(239 236 228 / 0.08);
-  --shadow-border-hover: 0 0 0 1px rgb(239 236 228 / 0.14);
+  --text-display: clamp(2.55rem, 7.2vw, 5.35rem);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-border: 0 0 0 1px rgb(243 239 230 / 0.09);
+  --shadow-border-hover: 0 0 0 1px rgb(243 239 230 / 0.18);
 }
 
 @layer base {
@@ -61,79 +65,106 @@
   }
 
   ::selection {
-    background: var(--color-accent);
-    color: var(--color-accent-fg);
+    background: var(--color-pine);
+    color: var(--color-ink);
   }
 }
 
 @layer utilities {
   .font-display {
     font-family: var(--font-display);
+    font-optical-sizing: auto;
   }
 
-  .desk-grid {
-    background-image:
-      linear-gradient(rgb(239 236 228 / 0.035) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(239 236 228 / 0.035) 1px, transparent 1px);
-    background-size: 48px 48px;
-    background-position: center top;
+  .kicker {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-stone);
   }
 
-  .diamond-wash {
-    background-image:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgb(125 154 134 / 0.12), transparent 55%),
-      radial-gradient(ellipse 40% 30% at 100% 0%, rgb(196 92 74 / 0.08), transparent 45%);
+  .panel {
+    background: var(--color-surface);
+    box-shadow: var(--shadow-border);
+    border-radius: var(--radius-md);
+  }
+
+  .nameplate {
+    border-top: 1px solid color-mix(in srgb, var(--color-fg) 58%, transparent);
+    border-bottom: 3px double color-mix(in srgb, var(--color-fg) 72%, transparent);
+  }
+
+  .nameplate h1 {
+    letter-spacing: -0.035em;
+    line-height: 0.88;
+  }
+
+  .agate {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    line-height: 1.35;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  .drop-cap {
+    float: left;
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-size: 3.35rem;
+    line-height: 0.8;
+    padding: 0.04em 0.1em 0 0;
+    color: var(--color-ink);
   }
 
   @keyframes fade-in-up {
     from {
       opacity: 0;
-      transform: translateY(12px);
-      filter: blur(4px);
+      transform: translateY(10px);
     }
     to {
       opacity: 1;
       transform: translateY(0);
-      filter: blur(0);
     }
   }
 
   .enter-stagger > * {
-    animation: fade-in-up 420ms cubic-bezier(0.2, 0, 0, 1) both;
+    animation: fade-in-up 400ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .enter-stagger > *:nth-child(1) {
     animation-delay: 40ms;
   }
   .enter-stagger > *:nth-child(2) {
-    animation-delay: 120ms;
+    animation-delay: 110ms;
   }
   .enter-stagger > *:nth-child(3) {
-    animation-delay: 200ms;
+    animation-delay: 180ms;
   }
   .enter-stagger > *:nth-child(4) {
-    animation-delay: 280ms;
+    animation-delay: 250ms;
   }
   .enter-stagger > *:nth-child(5) {
-    animation-delay: 360ms;
+    animation-delay: 320ms;
   }
   .enter-stagger > *:nth-child(6) {
-    animation-delay: 440ms;
+    animation-delay: 390ms;
   }
   .enter-stagger > *:nth-child(7) {
-    animation-delay: 520ms;
+    animation-delay: 460ms;
   }
   .enter-stagger > *:nth-child(8) {
-    animation-delay: 600ms;
+    animation-delay: 530ms;
   }
   .enter-stagger > *:nth-child(9) {
-    animation-delay: 680ms;
+    animation-delay: 600ms;
   }
   .enter-stagger > *:nth-child(10) {
-    animation-delay: 760ms;
+    animation-delay: 670ms;
   }
   .enter-stagger > *:nth-child(n + 11) {
-    animation-delay: 820ms;
+    animation-delay: 720ms;
   }
 }
 

@@ -1,5 +1,5 @@
-import { parkFactors, windCarry, normAbbr } from "./parks";
-import { abbrOf, clamp, handCode, int, namesMatch, num, seasonFromDate, shiftDate } from "./parse";
+import { parkFactors, parkRoof, windCarry, normAbbr } from "./parks";
+import { abbrOf, clamp, handCode, hourEt, int, namesMatch, num, seasonFromDate, shiftDate } from "./parse";
 import {
   hrDrought,
   isOpener,
@@ -24,6 +24,11 @@ import { loadRotowireLineups, rwByAbbr, type RotowireGame } from "./rotowire.ser
 import { groupPrizePicks, loadPrizePicks, matchPpRows, playableLine } from "./prizepicks.server";
 import { buildSlips, gradeSlips, type BoxActual } from "./slips";
 import { matchupOf } from "./pitches";
+import { snapshotQuotes, loadQuotes, buildWire } from "./wire.server";
+import { loadBooksBoard } from "./books.server";
+import { attachBooks, countLeaks, emptyBooks } from "./odds";
+import { snapshotOdds } from "./tape.server";
+import { emptyTape } from "./tape";
 import type {
   AnalysisResult,
   ArsenalCard,
@@ -46,7 +51,7 @@ import type {
 } from "./types";
 
 const MLB = "https://statsapi.mlb.com/api/v1";
-const UA = "BlastRadius/2.0 (home-run desk)";
+const UA = "GreatRun/3.3 (home-run desk)";
 
 type CacheEntry<T> = { expires: number; value: T };
 const cache = new Map<string, CacheEntry<unknown>>();
@@ -149,6 +154,9 @@ function blankPitcher(id: number, name: string): PitcherCard {
     sbRate: null,
     recentK9: null,
     recentIp: null,
+    bf: 0,
+    recentK: null,
+    recentBf: null,
   };
 }
 
@@ -168,6 +176,7 @@ function pitcherFromStat(id: number, name: string, hand: PitcherCard["hand"], st
     gamesStarted: int(stat.gamesStarted),
     gamesPlayed: int(stat.gamesPlayed) || int(stat.gamesPitched) || int(stat.gamesStarted),
     opener: false,
+    bf: int(stat.battersFaced),
   };
 }
 
@@ -182,7 +191,7 @@ function asTeam(raw: Record<string, unknown>): { id: number; name: string; abbre
 }
 
 export async function fetchSlate(date: string): Promise<SlateResult> {
-  return cached(`slate:${date}:v5`, 4 * 60_000, () => loadSlate(date));
+  return cached(`slate:${date}:v6`, 4 * 60_000, () => loadSlate(date));
 }
 
 async function loadSlate(date: string): Promise<SlateResult> {
@@ -346,6 +355,7 @@ async function fetchWeather(games: Array<GameCard & { lat?: number | null; lon?:
         azimuth: g.azimuth,
         tempF,
         elevationFt: g.elevationFt,
+        roof: parkRoof(g.venueId),
       });
       const snap: WeatherSnap = { tempF, windMph, windDir, windLabel: label, carry };
       for (const game of games) {
@@ -423,12 +433,12 @@ async function lastWeekHitting(
   return map;
 }
 
-async function lastTenPitching(season: number): Promise<Map<number, { k9: number; ip: number; k: number }>> {
+async function lastTenPitching(season: number): Promise<Map<number, { k9: number; ip: number; k: number; bf: number }>> {
   try {
     const data = await mlb<StatsPayload>(
       `/stats?stats=lastXGames&group=pitching&season=${season}&sportId=1&limit=250`,
     );
-    const map = new Map<number, { k9: number; ip: number; k: number }>();
+    const map = new Map<number, { k9: number; ip: number; k: number; bf: number }>();
     for (const split of splitsOf(data)) {
       const id = split.player?.id;
       if (!id || !split.stat) continue;
@@ -438,6 +448,7 @@ async function lastTenPitching(season: number): Promise<Map<number, { k9: number
         k9: num(split.stat.strikeoutsPer9Inn),
         ip: ip / games,
         k: int(split.stat.strikeOuts),
+        bf: int(split.stat.battersFaced),
       });
     }
     return map;
@@ -491,7 +502,7 @@ async function boxActuals(games: GameCard[]): Promise<Map<number, BoxActual>> {
             if (!id) continue;
             const b = row.stats?.batting;
             const p = row.stats?.pitching;
-            const cur = map.get(id) ?? { hr: 0, hits: 0, tb: 0, rbi: 0, sb: 0, k: 0, runs: 0, pa: 0, pitcherK: 0, inProgress: false };
+            const cur = map.get(id) ?? { hr: 0, hits: 0, tb: 0, rbi: 0, sb: 0, k: 0, runs: 0, pa: 0, pitcherK: 0, walks: 0, inProgress: false };
             if (b && Object.keys(b).length) {
               cur.hr = int(b.homeRuns);
               cur.hits = int(b.hits);
@@ -501,6 +512,7 @@ async function boxActuals(games: GameCard[]): Promise<Map<number, BoxActual>> {
               cur.k = int(b.strikeOuts);
               cur.runs = int(b.runs);
               cur.pa = int(b.plateAppearances);
+              cur.walks = int(b.baseOnBalls);
             }
             if (p && Object.keys(p).length) {
               cur.pitcherK = int(p.strikeOuts);
@@ -622,11 +634,14 @@ function buildEdge(
   teamId: number,
   oppAbbr: string,
   maps: EdgeMaps,
+  dayNight: string,
 ): PropEdge {
   const handCodeVs = vsHandCode(pitcher?.hand ?? null);
   const vsHand = pickHandSplit(maps.batterHands.get(playerId), handCodeVs);
   const haCode = isHome ? "h" : "a";
   const ha = maps.batterHA.get(playerId)?.[haCode] ?? null;
+  const dnCode: "d" | "n" | null = dayNight === "day" ? "d" : dayNight === "night" ? "n" : null;
+  const dn = dnCode ? maps.batterDN.get(playerId)?.[dnCode] ?? null : null;
   const batted = maps.batted.get(playerId);
   const sprint = maps.sprint.get(playerId);
   const run = pitcher ? maps.pitcherRun.get(pitcher.id) : undefined;
@@ -657,11 +672,29 @@ function buildEdge(
     pitcherK9: pitcher?.k9 ?? null,
     pitcherWhip: pitcher?.whip ?? null,
     pitcherXera: pitcher?.xera ?? pitcher?.era ?? null,
+    dn,
+    dnCode,
   };
 }
 
 function lastName(name: string): string {
   return name.split(" ").slice(-1)[0] ?? name;
+}
+
+function lineupKRate(
+  roster: Array<{ playerId: number; season: BatterSeason }>,
+  pitcherHand: PitcherCard["hand"],
+  maps: EdgeMaps,
+): number {
+  if (!roster.length) return 0.22;
+  let sum = 0;
+  for (const b of roster) {
+    const hands = maps.batterHands.get(b.playerId);
+    const split = pitcherHand === "L" ? hands?.vl : pitcherHand === "R" ? hands?.vr : null;
+    const rate = split && split.pa >= 30 ? split.k / Math.max(split.pa, 1) : b.season.k / Math.max(b.season.pa, 1);
+    sum += rate;
+  }
+  return sum / roster.length;
 }
 
 function orderRoster(
@@ -805,11 +838,11 @@ function buildEdgesBoard(opts: {
   const climate = [...k]
     .map((p) => {
       const park = p.parkKFactor;
-      const score = Math.round(clamp((p.pitcher.k9 - 8) * 8 + (park - 100) * 1.4 + (p.oppKRate - 0.21) * 180, 18, 96));
+      const score = Math.round(clamp((p.impliedK - 4.2) * 14 + (p.pitcher.k9 - 8) * 5 + (park - 100) * 1.2 + (p.oppKRate - 0.21) * 140, 18, 96));
       return {
         pick: p,
         score,
-        detail: `${p.pitcher.k9.toFixed(1)} K/9 in a ${park} K park · opp K ${(p.oppKRate * 100).toFixed(1)}%`,
+        detail: `${p.impliedK.toFixed(1)} expected Ks · ${p.pitcher.k9.toFixed(1)} K/9 · opp K ${(p.oppKRate * 100).toFixed(1)}%`,
       };
     })
     .sort((a, b) => b.score - a.score);
@@ -869,6 +902,25 @@ function buildEdgesBoard(opts: {
     out.push(edgeOf(row.pick, "home", "hits", "Home split", row.detail, row.score));
   }
 
+  const night = [...uniqueBatters.values()]
+    .map((p) => {
+      const factor = p.factors.find((f) => f.key === "night");
+      const clock = p.factors.find((f) => f.key === "clock");
+      return {
+        pick: p,
+        score: Math.round(clamp(((factor?.score ?? 0.5) - 0.48) * 200, 18, 96)),
+        keep: (factor?.score ?? 0) >= 0.58 && (p.edge?.dn?.pa ?? 0) >= 80,
+        detail: [factor?.detail, clock && clock.detail !== "—" ? clock.detail : null].filter(Boolean).join(" · "),
+      };
+    })
+    .filter((row) => row.keep)
+    .sort((a, b) => b.score - a.score);
+
+  for (const row of takeTop(night, 3)) {
+    const nightGame = row.pick.edge?.dnCode !== "d";
+    out.push(edgeOf(row.pick, "night", "hr", nightGame ? "Night masher" : "Day masher", row.detail, row.score));
+  }
+
   const rbiEdges = rbi
     .filter((p) => p.lineupSlot >= 2 && p.lineupSlot <= 5 && (p.edge?.teamObp ?? 0) >= 0.318)
     .map((p) => {
@@ -915,11 +967,15 @@ function edgeOf(pick: BatterPick, kind: EdgeRow["kind"], market: EdgeRow["market
   };
 }
 
-export async function runAnalysis(date: string): Promise<AnalysisResult> {
-  return cached(`analyze:${date}:v35`, 8 * 60_000, () => buildAnalysis(date));
+export async function runAnalysis(date: string, opts?: { notes?: boolean; lockHrIds?: number[] }): Promise<AnalysisResult> {
+  const lock = (opts?.lockHrIds ?? []).filter((id) => Number.isFinite(id));
+  const key = lock.length ? `analyze:${date}:v60:lock:${lock.join("-")}` : `analyze:${date}:v60`;
+  const result = await cached(key, 8 * 60_000, () => buildAnalysis(date, lock));
+  if (opts?.notes) await deskNotes(result);
+  return result;
 }
 
-async function buildAnalysis(date: string): Promise<AnalysisResult> {
+async function buildAnalysis(date: string, lockHrIds: number[] = []): Promise<AnalysisResult> {
   const season = seasonFromDate(date);
   const slate = await loadSlate(date);
   const games = slate.games as Array<GameCard & { lat?: number | null; lon?: number | null }>;
@@ -927,7 +983,8 @@ async function buildAnalysis(date: string): Promise<AnalysisResult> {
   const teamIds = [...new Set(games.flatMap((g) => [g.away.id, g.home.id]))];
   const pitcherIds = games.flatMap((g) => [g.away.probable?.id, g.home.probable?.id]).filter((id): id is number => !!id);
 
-  const [teamHits, recentMap, weekMap, recentPitch, saberMaps, pitchMaps, edgeMaps, prizePicks] = await Promise.all([
+  const [teamHits, recentMap, weekMap, recentPitch, saberMaps, pitchMaps, edgeMaps, prizePicks, _weather, booksBoard] =
+    await Promise.all([
     Promise.all(teamIds.map((id) => teamHitting(season, id))).then((rows) => rows.flat()),
     lastTenHitting(season, teamIds),
     lastWeekHitting(season, date, teamIds),
@@ -941,12 +998,19 @@ async function buildAnalysis(date: string): Promise<AnalysisResult> {
       catcherByTeam: new Map(),
       batterHands: new Map(),
       batterHA: new Map(),
+      batterDN: new Map(),
       pitcherHands: new Map(),
       teamObp: new Map(),
+      hrClock: new Map(),
+      leagueHours: [],
+      leagueDayHrPa: 0.032,
+      leagueNightHrPa: 0.035,
     }) satisfies EdgeMaps),
     loadPrizePicks(date).catch(() => []),
     fetchWeather(games),
+    loadBooksBoard(date).catch(() => emptyBooks()),
   ]);
+  void _weather;
 
   let hittingSplits = teamHits;
   if (hittingSplits.length < 24 && teamIds.length) {
@@ -979,6 +1043,8 @@ async function buildAnalysis(date: string): Promise<AnalysisResult> {
     const recentP = recentPitch.get(id);
     card.recentK9 = recentP?.k9 ?? null;
     card.recentIp = recentP?.ip ?? null;
+    card.recentK = recentP?.k ?? null;
+    card.recentBf = recentP?.bf ?? null;
     card.opener = isOpener(card);
     pitchers.set(id, card);
   }
@@ -1052,11 +1118,10 @@ async function buildAnalysis(date: string): Promise<AnalysisResult> {
       const ordered = orderRoster(team, byTeam.get(team.id) ?? []);
       const roster = ordered.roster;
       const pitcher = opp.probable;
-      const oppKRate =
-        roster.reduce((sum, b) => sum + b.season.k / Math.max(b.season.pa, 1), 0) / Math.max(roster.length, 1);
+      const oppKRate = lineupKRate(roster, pitcher?.hand ?? null, edgeMaps) || 0.22;
 
       if (pitcher && pitcher.id) {
-        const scored = scoreStrikeouts(pitcher, oppKRate || 0.22, game.parkKFactor);
+        const scored = scoreStrikeouts(pitcher, oppKRate, game.parkKFactor);
         kPicks.push({
           rank: 0,
           playerId: pitcher.id,
@@ -1074,6 +1139,8 @@ async function buildAnalysis(date: string): Promise<AnalysisResult> {
           factors: scored.factors,
           pitcher,
           oppKRate,
+          impliedK: scored.impliedK,
+          kRate: scored.kRate,
           note: null,
           parkKFactor: game.parkKFactor,
           propLine: playableLine(matchPpRows(pitcher.name, opp.abbr, ppGroup), "k"),
@@ -1091,10 +1158,11 @@ async function buildAnalysis(date: string): Promise<AnalysisResult> {
         const week = weekMap.get(batter.playerId) ?? null;
         const saber = saberMaps.batters.get(batter.playerId) ?? null;
         const vsPitches = pitchMaps.batterPitches.get(batter.playerId) ?? [];
-        const edge = buildEdge(batter.playerId, batter.batSide, pitcher ?? null, isHome, batter.teamId, opp.abbr, edgeMaps);
+        const edge = buildEdge(batter.playerId, batter.batSide, pitcher ?? null, isHome, batter.teamId, opp.abbr, edgeMaps, game.dayNight);
         const flags = recencyFlags(batter.season, week);
         const reverse = reversePlatoon(batter.batSide, pitcher?.hand ?? null, edge.vsHand);
         const opener = isOpener(pitcher ?? null) || isShortStart(pitcher ?? null);
+        const clock = edgeMaps.hrClock.get(batter.playerId);
         const ctx = {
           pitcher: pitcher ?? null,
           parkHr: game.parkHrFactor,
@@ -1110,6 +1178,17 @@ async function buildAnalysis(date: string): Promise<AnalysisResult> {
           edge,
           flags,
           reverse,
+          dayNight: game.dayNight,
+          roof: parkRoof(game.venueId),
+          venueId: game.venueId,
+          batSide: batter.batSide,
+          gameHour: hourEt(game.gameDate),
+          dn: edgeMaps.batterDN.get(batter.playerId) ?? null,
+          hrHours: clock?.hours,
+          lastHrDate: clock?.lastDate ?? null,
+          leagueDayHrPa: edgeMaps.leagueDayHrPa,
+          leagueNightHrPa: edgeMaps.leagueNightHrPa,
+          leagueHours: edgeMaps.leagueHours,
         };
 
         const hrS = scoreHomeRun(batter.season, recentHrPa, ctx, week);
@@ -1293,16 +1372,28 @@ async function buildAnalysis(date: string): Promise<AnalysisResult> {
     return open.length >= min ? open : arr;
   };
 
-  const hrPool = stillPlaying(hr);
-  const topHr = [...hrPool]
+  const openGames = games.filter((g) => g.abstractState !== "Final").length;
+  const hrPool = openGames >= 8 ? stillPlaying(hr) : hr;
+  let topHr = [...hrPool]
     .sort((a, b) => b.hrPct - a.hrPct || b.score - a.score)
-    .slice(0, 10)
+    .slice(0, 12)
     .map((row, i) => ({ ...row, rank: i + 1 }));
+  if (lockHrIds.length >= 8) {
+    const byId = new Map(hr.map((p) => [p.playerId, p]));
+    const locked = lockHrIds.map((id) => byId.get(id)).filter((p): p is BatterPick => Boolean(p));
+    if (locked.length >= 8) {
+      topHr = locked.slice(0, 12).map((row, i) => ({ ...row, rank: i + 1 }));
+    }
+  }
 
   const kPool = stillPlaying(
     kPicks.filter((p) => !p.pitcher.opener),
     4,
   );
+  const topK = [...kPool]
+    .sort((a, b) => b.impliedK - a.impliedK || b.score - a.score)
+    .slice(0, 10)
+    .map((row, i) => ({ ...row, rank: i + 1 }));
 
   const result: AnalysisResult = {
     date,
@@ -1315,22 +1406,29 @@ async function buildAnalysis(date: string): Promise<AnalysisResult> {
       tb: topN(stillPlaying(tb)),
       rbi: topN(stillPlaying(rbi)),
       sb: topN(stillPlaying(sb.filter((p) => p.season.sb >= 4), 6)),
-      k: topN(kPool),
+      k: topK,
     },
     sources: [
-      "MLB Stats API schedule and posted lineups, season hitting/pitching, last 10, last 6 days, vl/vr and home/away splits, team OBP",
+      "MLB Stats API schedule and posted lineups, season hitting/pitching, last 10, last 6 days, vl/vr, home/away, and day/night HR splits, team OBP, pitcher K/BF and batters faced",
       "RotoWire expected/confirmed batting orders, umpires, and park weather (MLB lineup wins once posted)",
       "PrizePicks MLB projections (partner board: HR, hits, TB, RBI, SB, pitcher Ks, Hits+Runs+RBIs, runs, fantasy score)",
-      "Baseball Savant expected stats, Statcast barrels, pitch arsenals, batted-ball, sprint speed, pitcher running game, catcher pop",
+      "Baseball Savant expected stats, Statcast barrels, pitch arsenals, batted-ball, sprint speed, pitcher running game, catcher pop, and the first-pitch hour of every home run this season",
       "Internal park factors for HR, hits, strikeouts, and steals — mix-weighted barrels vs the starter's full arsenal",
+      "PrizePicks line tape: open / last / close on every tick. Steam, fade, and closing-line value vs the posted card",
+      "Sportsbook tape: Action Network consensus + DraftKings / FanDuel / Pinnacle moneylines and totals, Bovada and Underdog player props. Open is the morning print. Close freezes at first pitch.",
+      ...booksBoard.sources,
     ],
     model: {
-      name: "Blast Radius desk",
-      version: "2.0",
+      name: "Great Run",
+      version: "3.3",
       notes: [
-        "Saturday 9/12 graded 9/11 on counting slips; the HR board went 0/10. 0.5 HR is a lottery — COLD and ace matchups are docked off the top.",
-        "Short starters (under ~4.3 IP) boost counting. 1.5 juice needs score 58, slot 1–6, and a real PA sample. Pederson-type thin bats are off juice.",
-        "Core 3 is H+R+RBI / fantasy score / runs. Power 2 leads with Ks. HR / hits / TB overs vs aces stay off. Live day games leave the evening card.",
+        "3.3 prices pitcher strikeouts from K/BF, expected IP, mix whiff, and the lineup's punchout rate vs that hand — not K/9 times a fake 6-inning outing. Friday's 5.5s needed 6 Ks from ~5 IP.",
+        "3.2 ranks home runs with each bat's day/night HR/PA and the first-pitch hour of the games they actually went yard. Night slates get a small league lift; mashers with a real night split get more.",
+        "Barrels, launch window, pull-air, vs-hand HR, pitcher fly tilt, FB velo, and LHB/RHB park still lead. A quiet week is noise, not a veto.",
+        "Power 2 is Ks, 0.5 contact, and 0.5 runs. Core can take one quality 1.5. Flex posts at 1.03x with two juice lines max. Empty lanes show as skips, not losses.",
+        "Standard 0.5 HR stays off parlays — true P(HR) is 15–30%, not 50%. The Great Run board is the HR card. A 25% board is 3 of 12.",
+        "Break-even: Power 2 57.7%, Power 3 55.0%, Flex 6 54.2%. Empty days are skips, not red.",
+        "The wire ranks every live PrizePicks line by cover minus juice. It does not place bets.",
       ],
     },
     saberBoard: [],
@@ -1339,6 +1437,10 @@ async function buildAnalysis(date: string): Promise<AnalysisResult> {
     slips: [],
     lineCount: prizePicks.length,
     grade: null,
+    hrDesk: null,
+    wire: null,
+    books: booksBoard,
+    tape: null,
   };
 
   const seen = new Set<number>();
@@ -1393,11 +1495,52 @@ async function buildAnalysis(date: string): Promise<AnalysisResult> {
   result.arsenals = arsenals;
   result.edges = buildEdgesBoard({ hr, hits, tb, rbi, sb, k: kPicks });
   const complete = games.length > 0 && games.every((g) => g.abstractState === "Final");
-  const graded = gradeSlips(buildSlips([...hr, ...hits, ...tb, ...rbi, ...sb, ...hrrbi, ...runs, ...fs], kPicks, date), actuals, { complete });
+  const graded = gradeSlips(buildSlips([...hr, ...hits, ...tb, ...rbi, ...sb, ...hrrbi, ...runs, ...fs], kPicks, date, booksBoard.props), actuals, { complete });
   result.slips = graded.slips;
   result.grade = graded.grade;
+  const hrHits = topHr.filter((p) => (p.actual?.hr ?? 0) > 0).length;
+  const hrMisses = topHr.filter((p) => p.gameState === "Final" && p.actual && (p.actual.hr ?? 0) === 0).length;
+  const hrDecidedN = hrHits + hrMisses;
+  const hrPending = topHr.length - hrDecidedN;
+  const hrExpected = topHr.reduce((s, p) => s + (p.hrPct || 0), 0);
+  result.hrDesk = {
+    hits: hrHits,
+    n: hrDecidedN,
+    pending: hrPending,
+    expected: Math.round(hrExpected * 10) / 10,
+    summary: hrDecidedN
+      ? `${hrHits} of ${hrDecidedN} Great Run names went yard (model expected ${hrExpected.toFixed(1)}). A 25% board is 3 of 12 — not 10 of 10.`
+      : hrPending
+        ? `${topHr.length} names · ${hrExpected.toFixed(1)} expected homers. Boxes grade after first pitch.`
+        : "No home-run board.",
+  };
+  try {
+    const started = games.some((g) => g.abstractState !== "Preview");
+    const quotes = await snapshotQuotes(date, prizePicks, started);
+    result.wire = buildWire({
+      picks: [...hr, ...hits, ...tb, ...rbi, ...sb, ...hrrbi, ...runs, ...fs, ...kPicks],
+      slips: result.slips,
+      quotes,
+      news: booksBoard.news,
+    });
+  } catch {
+    result.wire = buildWire({
+      picks: [...hr, ...hits, ...tb, ...rbi, ...sb, ...hrrbi, ...runs, ...fs, ...kPicks],
+      slips: result.slips,
+      quotes: await loadQuotes(date).catch(() => []),
+      news: booksBoard.news,
+    });
+  }
+  if (result.wire) {
+    result.wire.rows = attachBooks(result.wire.rows, booksBoard.props);
+    result.books = { ...booksBoard, leaks: countLeaks(result.wire.rows) };
+  }
+  try {
+    result.tape = await snapshotOdds(date, booksBoard, games);
+  } catch {
+    result.tape = emptyTape();
+  }
 
-  await deskNotes(result);
   return result;
 }
 
@@ -1410,7 +1553,7 @@ export async function gradePublishedCards(cards: { date: string; slips: SlipCard
         const slate = await fetchSlate(date);
         const stamp = slate.games.map((g) => `${g.gamePk}:${g.abstractState}`).join(",");
         const ttl = slate.games.length && slate.games.every((g) => g.abstractState === "Final") ? 20 * 60_000 : 90_000;
-        const actuals = await cached(`box:${date}:v2:${stamp}`, ttl, () => boxActuals(slate.games));
+        const actuals = await cached(`box:${date}:v3:${stamp}`, ttl, () => boxActuals(slate.games));
         byDate.set(date, { actuals, games: slate.games });
       } catch {
         byDate.set(date, { actuals: new Map(), games: [] });

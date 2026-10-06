@@ -8,6 +8,8 @@ export type ParkInfo = {
   elevation: number;
 };
 
+export type Roof = "open" | "dome" | "retract";
+
 export const PARKS: Record<number, ParkInfo> = {
   1: { hr: 101, hits: 101, k: 99, sb: 98, elevation: 160 },
   2: { hr: 109, hits: 104, k: 96, sb: 99, elevation: 20 },
@@ -42,6 +44,40 @@ export const PARKS: Record<number, ParkInfo> = {
   680: { hr: 94, hits: 96, k: 106, sb: 100, elevation: 20 },
 };
 
+/** Closed roofs kill wind. Retractable stays open unless we know otherwise. */
+export const ROOFS: Record<number, Roof> = {
+  12: "dome",
+  14: "retract",
+  15: "retract",
+  32: "retract",
+  680: "retract",
+  2392: "retract",
+  4169: "retract",
+};
+
+/** LHB/RHB HR deltas vs the overall park factor. Short porches and the Monster. */
+export const PARK_HAND: Record<number, { lhb: number; rhb: number }> = {
+  2: { lhb: 7, rhb: -3 },
+  3: { lhb: -6, rhb: 5 },
+  4: { lhb: 6, rhb: -4 },
+  14: { lhb: -3, rhb: 4 },
+  15: { lhb: 3, rhb: -2 },
+  19: { lhb: 1, rhb: 1 },
+  22: { lhb: -2, rhb: 3 },
+  2392: { lhb: 6, rhb: -4 },
+  2529: { lhb: 4, rhb: -2 },
+  2602: { lhb: 6, rhb: -3 },
+  2680: { lhb: -2, rhb: 1 },
+  2681: { lhb: 5, rhb: -3 },
+  3313: { lhb: 8, rhb: -4 },
+  4169: { lhb: -4, rhb: 2 },
+  4705: { lhb: 4, rhb: -2 },
+};
+
+export function parkRoof(venueId: number): Roof {
+  return ROOFS[venueId] ?? "open";
+}
+
 export function parkFactors(venueId: number, elevationFt?: number): { hr: number; hits: number; k: number; sb: number } {
   const known = PARKS[venueId];
   if (known) return { hr: known.hr, hits: known.hits, k: known.k, sb: known.sb };
@@ -59,33 +95,54 @@ export function parkHrFactor(venueId: number, elevationFt?: number): number {
   return parkFactors(venueId, elevationFt).hr;
 }
 
+export function parkHandHr(
+  venueId: number,
+  bat: "L" | "R" | "S" | null | undefined,
+  baseHr: number,
+): number {
+  const adj = PARK_HAND[venueId];
+  if (!adj || !bat || bat === "S") return baseHr;
+  const delta = bat === "L" ? adj.lhb : adj.rhb;
+  return Math.max(80, Math.min(130, baseHr + delta));
+}
+
 export function windCarry(opts: {
   windMph: number | null;
   windFromDeg: number | null;
   azimuth: number | null;
   tempF: number | null;
   elevationFt: number;
+  roof?: Roof;
 }): { carry: number; label: string } {
-  const { windMph, windFromDeg, azimuth, tempF, elevationFt } = opts;
+  const { windMph, windFromDeg, azimuth, tempF, elevationFt, roof } = opts;
+  if (roof === "dome") {
+    const tempBit = tempF != null ? ` · ${Math.round(tempF)}°` : "";
+    return { carry: 0.48, label: `Dome${tempBit}` };
+  }
+
   let carry = 0.45;
   let label = "Neutral air";
 
   if (tempF != null) {
-    carry += Math.max(-0.12, Math.min(0.14, (tempF - 72) / 140));
+    carry += Math.max(-0.12, Math.min(0.16, (tempF - 70) / 120));
   }
-  carry += Math.max(0, Math.min(0.12, (elevationFt - 400) / 20000));
+  carry += Math.max(0, Math.min(0.14, (elevationFt - 400) / 18000));
 
   if (windMph != null && windFromDeg != null && azimuth != null) {
     const outDeg = (azimuth + 180) % 360;
     const delta = ((((windFromDeg - outDeg + 180) % 360) + 360) % 360) - 180;
     const towardCf = Math.cos((delta * Math.PI) / 180) * windMph;
-    carry += Math.max(-0.18, Math.min(0.2, towardCf / 70));
+    carry += Math.max(-0.18, Math.min(0.22, towardCf / 65));
     if (towardCf > 6) label = `Wind out ${Math.round(windMph)} mph`;
     else if (towardCf < -6) label = `Wind in ${Math.round(windMph)} mph`;
     else if (windMph >= 8) label = `Cross wind ${Math.round(windMph)} mph`;
     else label = `Calm, ${windMph.toFixed(0)} mph`;
   } else if (tempF != null) {
     label = tempF >= 82 ? `Hot air ${Math.round(tempF)}°` : `${Math.round(tempF)}°`;
+  }
+
+  if (roof === "retract" && !label.startsWith("Wind")) {
+    label = `${label} · roof open`;
   }
 
   return { carry: Math.max(0, Math.min(1, carry)), label };

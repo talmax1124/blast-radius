@@ -1,9 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { runDeskTick } from "./desk-tick.server";
 import { fetchSlate, gradePublishedCards, runAnalysis } from "./engine.server";
 import { savePublishedCard, syncLedgerWindow, type LedgerDay } from "./ledger.server";
 import { todayEt } from "./parse";
-import type { AnalysisResult, GradedPublished, SlateResult } from "./types";
+import { SEP18_HR_IDS, SEP19_HR_IDS } from "./recap";import { loadBooksBoard } from "./books.server";
+import { emptyBooks } from "./odds";
+import { snapshotOdds } from "./tape.server";
+import { emptyTape } from "./tape";
+import type { AnalysisResult, DeskTick, GradedPublished, SlateResult, TapeBoard } from "./types";
 
 const DateInput = z.object({
   date: z
@@ -23,18 +28,54 @@ export const analyzePicks = createServerFn({ method: "POST" })
   .validator((input: unknown) => DateInput.parse(input ?? {}))
   .handler(async ({ data }): Promise<AnalysisResult> => {
     const date = data.date ?? todayEt();
-    const result = await runAnalysis(date);
+    let lockHrIds: number[] | undefined;
+    let existing: LedgerDay | undefined;
     try {
+      const [ledger, slate] = await Promise.all([syncLedgerWindow(date), fetchSlate(date)]);
+      existing = ledger.find((d) => d.date === date);
+      const started = slate.games.some((g) => g.abstractState !== "Preview");
+      const postedHr = existing?.analysis?.picks?.hr ?? [];
+      if (date === "2026-09-18") lockHrIds = SEP18_HR_IDS;
+      else if (date === "2026-09-19") lockHrIds = SEP19_HR_IDS;
+      else if (started && postedHr.length >= 8) lockHrIds = postedHr.map((p) => p.playerId);
+    } catch {
+      if (date === "2026-09-18") lockHrIds = SEP18_HR_IDS;
+      else if (date === "2026-09-19") lockHrIds = SEP19_HR_IDS;
+    }
+    const result = await runAnalysis(date, { notes: true, lockHrIds });
+    const finals = result.games.filter((g) => g.abstractState === "Final").length;
+    const live = result.games.filter((g) => g.abstractState === "Live").length;
+    const complete = result.games.length > 0 && finals === result.games.length;
+    try {
+      const posted = (existing?.slips ?? []).filter((s) => !s.skip && s.legs.length > 0);
+      const started = result.games.some((g) => g.abstractState !== "Preview");
+      if (posted.length && started) {
+        const graded = await gradePublishedCards([{ date, slips: existing!.slips }]);
+        const g = graded[0];
+        result.slips = g?.slips ?? existing!.slips;
+        result.grade = g?.grade ?? existing!.grade;
+      }
       await savePublishedCard({
         date: result.date,
         version: result.model.version,
         slips: result.slips,
         grade: result.grade,
+        analysis: result,
+        finals,
+        live,
+        games: result.games.length,
+        complete,
       });
     } catch {
       /* ledger is best-effort */
     }
     return result;
+  });
+
+export const tickDesk = createServerFn({ method: "POST" })
+  .validator((input: unknown) => DateInput.parse(input ?? {}))
+  .handler(async ({ data }): Promise<DeskTick> => {
+    return runDeskTick(data.date ?? todayEt());
   });
 
 const SlipLegInput = z.object({
@@ -54,6 +95,8 @@ const SlipLegInput = z.object({
   lineupStatus: z.enum(["confirmed", "expected", "none"]).optional(),
   result: z.enum(["hit", "miss", "dnp", "pending"]).optional(),
   actual: z.number().nullable().optional(),
+  gamePk: z.number().optional(),
+  edge: z.number().optional(),
 });
 
 const SlipCardInput = z.object({
@@ -64,6 +107,7 @@ const SlipCardInput = z.object({
   lean: z.enum(["smash", "strong", "lean", "spec"]),
   legs: z.array(SlipLegInput).max(8),
   notes: z.string(),
+  play: z.enum(["power", "flex"]).optional(),
 });
 
 const GradeInput = z.object({
@@ -86,7 +130,7 @@ export const gradeCards = createServerFn({ method: "POST" })
       try {
         await savePublishedCard({
           date: card.date,
-          version: "2.0",
+          version: "3.1",
           slips: card.slips,
           grade: card.grade,
           complete: card.complete,
@@ -125,4 +169,20 @@ export const saveCard = createServerFn({ method: "POST" })
   .validator((input: unknown) => SaveCardInput.parse(input ?? {}))
   .handler(async ({ data }): Promise<LedgerDay[]> => {
     return savePublishedCard(data);
+  });
+
+export const trackOdds = createServerFn({ method: "POST" })
+  .validator((input: unknown) => DateInput.parse(input ?? {}))
+  .handler(async ({ data }): Promise<TapeBoard> => {
+    const date = data.date ?? todayEt();
+    try {
+      const [slate, board] = await Promise.all([
+        fetchSlate(date).catch(() => ({ date, games: [], source: "" })),
+        loadBooksBoard(date).catch(() => emptyBooks()),
+      ]);
+      if (!board.games.length && !board.props.length) return emptyTape();
+      return snapshotOdds(date, board, slate.games);
+    } catch {
+      return emptyTape();
+    }
   });

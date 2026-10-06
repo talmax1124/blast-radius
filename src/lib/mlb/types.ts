@@ -7,7 +7,7 @@ export type Lean = "smash" | "strong" | "lean" | "spec";
 
 export type PitchFamily = "heat" | "break" | "off";
 
-export type EdgeKind = "platoon" | "steal" | "fly" | "mix" | "climate" | "luck" | "home" | "rbi";
+export type EdgeKind = "platoon" | "steal" | "fly" | "mix" | "climate" | "luck" | "home" | "rbi" | "night";
 
 export type RecencyFlag = "hot" | "cold" | "thin" | "drought";
 
@@ -156,6 +156,9 @@ export type PitcherCard = {
   sbRate: number | null;
   recentK9: number | null;
   recentIp: number | null;
+  bf: number;
+  recentK: number | null;
+  recentBf: number | null;
 };
 
 export type PropEdge = {
@@ -182,6 +185,8 @@ export type PropEdge = {
   pitcherK9: number | null;
   pitcherWhip: number | null;
   pitcherXera: number | null;
+  dn: SplitCard | null;
+  dnCode: "d" | "n" | null;
 };
 
 export type BatterPick = {
@@ -315,6 +320,8 @@ export type PitcherPick = {
   factors: Factor[];
   pitcher: PitcherCard;
   oppKRate: number;
+  impliedK: number;
+  kRate: number;
   note: string | null;
   parkKFactor: number;
   propLine: PropLine | null;
@@ -366,6 +373,8 @@ export type SlipLeg = {
   lineupStatus?: LineupStatus;
   result?: LegResult;
   actual?: number | null;
+  gamePk?: number;
+  edge?: number;
 };
 
 export type SlipCard = {
@@ -376,6 +385,8 @@ export type SlipCard = {
   lean: Lean;
   legs: SlipLeg[];
   notes: string;
+  play?: "power" | "flex";
+  skip?: boolean;
 };
 
 export type AnalysisResult = {
@@ -403,6 +414,222 @@ export type AnalysisResult = {
   slips: SlipCard[];
   lineCount: number;
   grade: { hits: number; n: number; dnp: number; summary: string } | null;
+  hrDesk?: { hits: number; n: number; pending: number; expected: number; summary: string } | null;
+  wire?: WireBoard | null;
+  books?: BooksBoard | null;
+  tape?: TapeBoard | null;
+};
+
+export type SteamFlag = "steam" | "fade" | "flat";
+
+export type WireQuote = {
+  key: string;
+  name: string;
+  teamAbbr: string;
+  opponentAbbr: string;
+  market: PropMarket;
+  oddsType: OddsType;
+  openLine: number;
+  lastLine: number;
+  prevLine: number | null;
+  closeLine: number | null;
+  ticks: number;
+};
+
+export type ScannerRow = {
+  playerId: number;
+  name: string;
+  teamAbbr: string;
+  opponentAbbr: string;
+  market: PropMarket;
+  stat: string;
+  line: number;
+  side: "over" | "under";
+  oddsType: OddsType;
+  cover: number;
+  edge: number;
+  juice: number;
+  score: number;
+  lean: Lean;
+  openLine: number | null;
+  lastLine: number | null;
+  closeLine: number | null;
+  delta: number | null;
+  steam: SteamFlag;
+  onCard: boolean;
+  clv: number | null;
+  gameState: string;
+  bookLine?: number | null;
+  bookAmerican?: number | null;
+  bookImplied?: number | null;
+  bookSource?: string | null;
+};
+
+export type WireAlert = {
+  kind: "steam" | "fade" | "plus" | "scratch" | "clv" | "news";
+  headline: string;
+  detail: string;
+  playerId: number;
+  market: PropMarket;
+};
+
+export type WireBoard = {
+  scanned: number;
+  plusEv: number;
+  steam: number;
+  fade: number;
+  clvBeats: number;
+  clvN: number;
+  alerts: WireAlert[];
+  rows: ScannerRow[];
+};
+
+export type BookLine = {
+  mlAway: number | null;
+  mlHome: number | null;
+  spreadAway: number | null;
+  spreadHome: number | null;
+  spreadAwayPrice: number | null;
+  spreadHomePrice: number | null;
+  total: number | null;
+  over: number | null;
+  under: number | null;
+};
+
+export type BookQuote = {
+  id: number;
+  name: string;
+  line: BookLine;
+};
+
+export type BookGame = {
+  awayAbbr: string;
+  homeAbbr: string;
+  awayName: string;
+  homeName: string;
+  startTime: string | null;
+  status: string;
+  numBets: number | null;
+  consensus: BookLine;
+  open: BookLine | null;
+  hold: number | null;
+  books: BookQuote[];
+};
+
+export type BookProp = {
+  name: string;
+  teamAbbr: string;
+  market: PropMarket;
+  line: number;
+  overAmerican: number | null;
+  underAmerican: number | null;
+  implied: number;
+  source: string;
+};
+
+export type BooksBoard = {
+  games: BookGame[];
+  props: BookProp[];
+  sources: string[];
+  books: number;
+  leaks: number;
+  news?: DeskNews[];
+  feeds?: ApiSource[];
+};
+
+export type OddsTick = {
+  at: string;
+  line: number | null;
+  price: number | null;
+};
+
+export type OddsQuote = {
+  key: string;
+  kind: "game" | "prop";
+  book: string;
+  market: string;
+  awayAbbr: string;
+  homeAbbr: string;
+  name: string;
+  teamAbbr: string;
+  openLine: number | null;
+  lastLine: number | null;
+  closeLine: number | null;
+  openPrice: number | null;
+  lastPrice: number | null;
+  prevPrice: number | null;
+  closePrice: number | null;
+  ticks: number;
+  path: OddsTick[];
+};
+
+export type TapeAlert = {
+  kind: "steam" | "rlm" | "total" | "prop";
+  headline: string;
+  detail: string;
+  awayAbbr?: string;
+  homeAbbr?: string;
+};
+
+export type TapeBookSnap = {
+  name: string;
+  mlHome: number | null;
+  total: number | null;
+  mlDelta: number | null;
+};
+
+export type TapeGame = {
+  awayAbbr: string;
+  homeAbbr: string;
+  startTime: string | null;
+  status: string;
+  openMlHome: number | null;
+  lastMlHome: number | null;
+  closeMlHome: number | null;
+  openMlAway: number | null;
+  lastMlAway: number | null;
+  closeMlAway: number | null;
+  openTotal: number | null;
+  lastTotal: number | null;
+  closeTotal: number | null;
+  mlDelta: number | null;
+  totalDelta: number | null;
+  rlm: boolean;
+  steam: SteamFlag;
+  totalSteam: SteamFlag;
+  path: OddsTick[];
+  books: TapeBookSnap[];
+};
+
+export type TapeBoard = {
+  scanned: number;
+  steam: number;
+  rlm: number;
+  movers: number;
+  ticks: number;
+  alerts: TapeAlert[];
+  games: TapeGame[];
+  props: OddsQuote[];
+};
+
+export type DeskNews = {
+  name: string;
+  teamAbbr: string;
+  headline: string;
+  detail: string;
+  date: string;
+};
+
+export type SourceKind = "stats" | "odds" | "pickem" | "weather" | "news";
+export type SourceStatus = "live" | "blocked" | "key" | "idle";
+
+export type ApiSource = {
+  id: string;
+  name: string;
+  kind: SourceKind;
+  status: SourceStatus;
+  used: boolean;
+  note: string;
 };
 
 export type SlateResult = {
@@ -420,3 +647,17 @@ export type GradedPublished = {
   finals: number;
   games: number;
 };
+
+export type DeskTick = {
+  date: string;
+  action: "published" | "refreshed" | "locked" | "graded" | "off" | "error" | "skipped";
+  note: string;
+  slips: number;
+  pending: number;
+  games: number;
+  finals: number;
+  complete: boolean;
+  grade: { hits: number; n: number } | null;
+  result: AnalysisResult | null;
+};
+

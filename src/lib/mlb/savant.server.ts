@@ -2,7 +2,7 @@ import { blankPitch, MIX_CODES, pitchCode, pitchMeta } from "./pitches";
 import { num, parseCsv } from "./parse";
 import type { PitchTypeRow, SaberCard } from "./types";
 
-const UA = "BlastRadius/1.3 (home-run desk)";
+const UA = "GreatRun/3.3 (home-run desk)";
 
 async function csv(url: string): Promise<Record<string, string>[]> {
   const res = await fetch(url, {

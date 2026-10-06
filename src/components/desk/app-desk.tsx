@@ -2,10 +2,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   CalendarDays,
   CloudSun,
-  Crosshair,
   Gauge,
   Loader2,
-  MapPin,
   Radar,
   Wind,
 } from "lucide-react";
@@ -13,8 +11,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ArsenalLab, MixBar, PitchGlossaryCard, PitchTable } from "@/components/desk/arsenal-lab";
 import { EdgeGlossaryCard, EdgesLab } from "@/components/desk/edges-lab";
+import { Folio, Nameplate, Skyline } from "@/components/desk/edition";
 import { GradesLab } from "@/components/desk/grades-lab";
 import { SlipsLab } from "@/components/desk/slips-lab";
+import { WireLab } from "@/components/desk/wire-lab";
+import { BooksLab } from "@/components/desk/books-lab";
+import { TapeLab } from "@/components/desk/tape-lab";
+import { SourcesLab } from "@/components/desk/sources-lab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,9 +25,11 @@ import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { analyzePicks, getSlate, gradeCards, loadLedger } from "@/lib/mlb/functions";
+import { analyzePicks, getSlate, gradeCards, loadLedger, tickDesk, trackOdds } from "@/lib/mlb/functions";
 import { SABER_GLOSSARY } from "@/lib/mlb/glossary";
+import { editionCopy, type EditionCopy } from "@/lib/mlb/copy";
 import { applyGrades, ledgerRate, mergeLedger, mergeLog, pendingCards, type DeskLogEntry } from "@/lib/mlb/recap";
+import { formatUnits, ledgerReport } from "@/lib/mlb/grade";
 import { formatGameTime, headshotUrl, teamLogoUrl, todayEt } from "@/lib/mlb/parse";
 import { familyFill } from "@/lib/mlb/pitches";
 import { leanFrom } from "@/lib/mlb/score";
@@ -40,8 +45,8 @@ import type {
   SaberRow,
 } from "@/lib/mlb/types";
 
-const STORAGE_KEY = "blast-radius:last-analysis-20";
-const LOG_KEY = "blast-radius:card-log";
+const STORAGE_KEY = "great-run:last-analysis-32";
+const LOG_KEY = "great-run:card-log-30";
 const LOADING_COPY = [
   "Pulling the MLB slate",
   "Reading RotoWire batting orders",
@@ -50,18 +55,25 @@ const LOADING_COPY = [
   "Reading Statcast pitch types",
   "Loading platoon, sprint, and catcher pops",
   "Pulling last 6 days of box scores",
-  "Weighting mix barrels vs the starter's arsenal",
+  "Pricing starter K/BF, outing length, and mix whiff",
+  "Shopping PrizePicks against the books",
+  "Taping moneyline, total, and player-prop odds",
+  "Weighting barrels, launch, pull-air, porch, night splits, and HR clock",
   "Flagging recency, reverse platoon, and openers",
   "Building 2-, 3-, and 6-man slips",
 ];
 
 type BoardMarket = keyof AnalysisResult["picks"];
-type DeskTab = BoardMarket | "savant" | "arsenal" | "edges" | "slips" | "grades";
+type DeskTab = BoardMarket | "savant" | "arsenal" | "edges" | "slips" | "grades" | "wire" | "tape" | "books" | "sources";
 
 const TABS: { id: DeskTab; label: string }[] = [
+  { id: "hr", label: "Great Run" },
   { id: "slips", label: "Slips" },
   { id: "grades", label: "Grades" },
-  { id: "hr", label: "Home runs" },
+  { id: "wire", label: "Wire" },
+  { id: "tape", label: "Tape" },
+  { id: "books", label: "Books" },
+  { id: "sources", label: "Sources" },
   { id: "hits", label: "Hits" },
   { id: "tb", label: "Total bases" },
   { id: "rbi", label: "RBI" },
@@ -100,7 +112,7 @@ function loadSaved(date: string): AnalysisResult | null {
       Array.isArray(parsed.result.arsenals) &&
       Array.isArray(parsed.result.edges) &&
       Array.isArray(parsed.result.slips) &&
-      parsed.result.model?.version === "2.0"
+      parsed.result.model?.version === "3.3"
     ) {
       return parsed.result;
     }
@@ -309,6 +321,8 @@ function arsenalToPick(row: ArsenalCard): PitcherPick {
     factors: [],
     pitcher: row.pitcher,
     oppKRate: 0,
+    impliedK: 0,
+    kRate: 0,
     note: null,
     parkKFactor: 0,
     propLine: null,
@@ -323,9 +337,12 @@ function trailStat(pick: BatterPick | PitcherPick): string {
   }
   if (pick.market === "k") {
     const p = pick as PitcherPick;
+    if (p.impliedK > 0) {
+      return p.propLine ? `${p.impliedK.toFixed(1)} vs ${p.propLine.line}` : `${p.impliedK.toFixed(1)} K`;
+    }
     const primary = p.pitcher.arsenal[0];
     if (primary?.whiff != null) return `${primary.code} ${primary.whiff.toFixed(0)}%`;
-    return p.pitcher.xera != null ? `${p.pitcher.xera.toFixed(2)} xERA` : `${p.pitcher.k9.toFixed(1)} K/9`;
+    return p.kRate > 0 ? `${(p.kRate * 100).toFixed(0)}% K` : `${p.pitcher.k9.toFixed(1)} K/9`;
   }
   const b = pick as BatterPick;
   if (pick.market === "hits") {
@@ -349,6 +366,8 @@ export function AppDesk() {
   const [stage, setStage] = useState(0);
   const [cardLog, setCardLog] = useState<DeskLogEntry[]>([]);
   const seenComplete = useRef(new Set<string>());
+  const autoTried = useRef("");
+  const tabReady = useRef("");
 
   const slateQuery = useQuery({
     queryKey: ["slate", date],
@@ -361,13 +380,20 @@ export function AppDesk() {
     refetchInterval: 120_000,
   });
 
+  const tapeQuery = useQuery({
+    queryKey: ["odds-tape", date],
+    queryFn: () => trackOdds({ data: { date } }),
+    refetchInterval: date === todayEt() ? 180_000 : false,
+    staleTime: 60_000,
+  });
+
   const analyze = useMutation({
     mutationFn: () => analyzePicks({ data: { date } }),
     onSuccess: (data) => {
       setResult(data);
       saveResult(date, data);
       setCardLog(loadLog());
-      setTab("slips");
+      setTab("hr");
       void ledgerQuery.refetch();
     },
     onError: (err) => {
@@ -375,22 +401,75 @@ export function AppDesk() {
     },
   });
 
+  const tick = useMutation({
+    mutationFn: () => tickDesk({ data: { date } }),
+    onSuccess: (data) => {
+      if (data.result) {
+        setResult(data.result);
+        saveResult(data.date, data.result);
+        if (data.result.slips.length) setTab("hr");
+      }
+      setCardLog(loadLog());
+      void ledgerQuery.refetch();
+      if (data.action === "published") toast.success("Great Run posted tonight's card");
+      if (data.action === "skipped") toast("Great Run skipped tonight — not a loss");
+      if (data.action === "error") toast.error(data.note);
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Great Run could not post");
+    },
+  });
+
   useEffect(() => {
     const saved = loadSaved(date);
-    setResult(saved);
     const local = loadLog();
-    setCardLog(ledgerQuery.data ? mergeLedger(ledgerQuery.data, local) : local);
-    if (saved) setTab("slips");
+    const merged = ledgerQuery.data ? mergeLedger(ledgerQuery.data, local) : local;
+    setCardLog(merged);
+    persistLog(merged);
+    const fromDb = ledgerQuery.data?.find((d) => d.date === date)?.analysis ?? null;
+    const next = fromDb ?? saved;
+    if (next) {
+      const day = merged.find((e) => e.date === date);
+      const hydrated =
+        day?.slips.length
+          ? { ...next, slips: day.slips, grade: day.grade }
+          : next;
+      setResult(hydrated);
+      saveResult(date, hydrated);
+      if (tabReady.current !== date) {
+        setTab("hr");
+        tabReady.current = date;
+      }
+      return;
+    }
+    setResult(saved);
+    if (saved && tabReady.current !== date) {
+      setTab("hr");
+      tabReady.current = date;
+    }
   }, [date, ledgerQuery.data]);
 
   useEffect(() => {
-    if (!analyze.isPending) {
-      setStage(0);
-      return;
+    if (analyze.isPending || tick.isPending) {
+      const id = window.setInterval(() => setStage((s) => (s + 1) % LOADING_COPY.length), 2200);
+      return () => window.clearInterval(id);
     }
-    const id = window.setInterval(() => setStage((s) => (s + 1) % LOADING_COPY.length), 2200);
-    return () => window.clearInterval(id);
-  }, [analyze.isPending]);
+    setStage(0);
+    return undefined;
+  }, [analyze.isPending, tick.isPending]);
+
+  useEffect(() => {
+    if (date !== todayEt()) return;
+    if (ledgerQuery.isLoading) return;
+    if (analyze.isPending || tick.isPending) return;
+    if (autoTried.current === date) return;
+    const posted =
+      Boolean(loadSaved(date)?.slips.length) ||
+      Boolean(result?.date === date && result.slips.length) ||
+      Boolean(cardLog.find((e) => e.date === date && e.slips.length));
+    autoTried.current = date;
+    if (!posted) tick.mutate();
+  }, [date, ledgerQuery.isLoading, analyze.isPending, tick.isPending, result, cardLog, tick]);
 
   const pending = useMemo(() => pendingCards(cardLog, todayEt()), [cardLog]);
   const pendingKey = pending.map((p) => `${p.date}:${p.slips.flatMap((s) => s.legs.map((l) => l.playerId)).join("-")}`).join("|");
@@ -425,32 +504,54 @@ export function AppDesk() {
     }
   }, [gradeQuery.data]);
 
+  useEffect(() => {
+    const tape = tapeQuery.data;
+    if (!tape?.games.length && !tape?.props.length && !tape?.ticks) return;
+    setResult((prev) => {
+      if (!prev || prev.date !== date) return prev;
+      return { ...prev, tape };
+    });
+  }, [tapeQuery.data, date]);
+
   const games = result?.games ?? slateQuery.data?.games ?? [];
   const roll = ledgerRate(cardLog);
-  const labTab = tab === "savant" || tab === "arsenal" || tab === "edges" || tab === "slips" || tab === "grades";
+  const book = ledgerReport(cardLog);
+  const ledgerLabel =
+    roll.n > 0
+      ? `${roll.hits}/${roll.n}${book.units != null ? ` · ${formatUnits(book.units)}` : ""}`
+      : null;
+  const edition = useMemo(
+    () => editionCopy({ date, log: cardLog, games: games.length }),
+    [date, cardLog, games.length],
+  );
+  const labTab = tab === "savant" || tab === "arsenal" || tab === "edges" || tab === "slips" || tab === "grades" || tab === "wire" || tab === "tape" || tab === "books" || tab === "sources";
   const market: BoardMarket = labTab ? "hr" : (tab as BoardMarket);
   const picks = result && !labTab ? result.picks[market] : [];
-  const featured = tab !== "k" && !labTab ? (picks[0] as BatterPick | undefined) : null;
-  const wide = tab === "slips" || tab === "grades";
+  const featured = !labTab ? (picks[0] as BatterPick | PitcherPick | undefined) : null;
+  const wide = tab === "slips" || tab === "grades" || tab === "wire" || tab === "tape" || tab === "books" || tab === "sources";
+  const busy = analyze.isPending || tick.isPending;
 
   return (
-    <div className="diamond-wash desk-grid min-h-dvh">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pt-6 pb-16 sm:px-6 lg:px-8">
+    <div className="min-h-dvh bg-bg">
+      <div className="h-0.5 w-full bg-brick" />
+      <div className="mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-8 px-4 pt-5 pb-20 sm:px-6 lg:px-8">
         <Header
+          copy={edition}
           date={date}
           onDate={setDate}
-          loading={analyze.isPending}
+          loading={busy}
           onAnalyze={() => analyze.mutate()}
           gameCount={games.length}
-          ledger={roll.n > 0 ? `${roll.hits}/${roll.n}` : null}
+          ledger={ledgerLabel}
         />
 
         <SlateRow games={games} loading={slateQuery.isPending && games.length === 0} />
 
-        {analyze.isPending ? <LoadingBoard stage={stage} /> : null}
+        {busy ? <LoadingBoard stage={stage} /> : null}
 
-        {!analyze.isPending && !result ? (
+        {!busy && !result ? (
           <EmptyBoard
+            date={date}
             onAnalyze={() => analyze.mutate()}
             games={games.length}
             log={cardLog}
@@ -458,11 +559,11 @@ export function AppDesk() {
           />
         ) : null}
 
-        {result && !analyze.isPending ? (
+        {result && !busy ? (
           <section className={`grid gap-6 ${wide ? "" : "lg:grid-cols-[minmax(0,1fr)_280px]"}`}>
             <div className="min-w-0">
               {result.briefing ? (
-                <p className="mb-5 max-w-3xl text-sm leading-relaxed text-muted">{result.briefing}</p>
+                <p className="font-serif mb-5 max-w-3xl text-sm leading-relaxed text-muted italic">{result.briefing}</p>
               ) : null}
 
               <Tabs value={tab} onValueChange={(v) => setTab(v as DeskTab)}>
@@ -473,14 +574,16 @@ export function AppDesk() {
                     </TabsTrigger>
                   ))}
                 </TabsList>
-                {TABS.filter((m) => m.id !== "savant" && m.id !== "arsenal" && m.id !== "edges" && m.id !== "slips" && m.id !== "grades").map((m) => (
+                {TABS.filter((m) => m.id !== "savant" && m.id !== "arsenal" && m.id !== "edges" && m.id !== "slips" && m.id !== "grades" && m.id !== "wire" && m.id !== "tape" && m.id !== "books" && m.id !== "sources").map((m) => (
                   <TabsContent key={m.id} value={m.id}>
-                    {m.id !== "k" && featured && tab === m.id ? (
+                    {m.id === "hr" && result.hrDesk ? <HrDeskBanner desk={result.hrDesk} /> : null}
+                    {m.id === "k" ? <KDeskBanner picks={result.picks.k} /> : null}
+                    {featured && tab === m.id ? (
                       <FeaturedCard pick={featured} onOpen={setSelected} />
                     ) : null}
-                    <ol className="enter-stagger mt-4 flex flex-col gap-2">
+                    <ol className="enter-stagger panel mt-4 divide-y divide-border overflow-hidden">
                       {(result.picks[m.id as BoardMarket] as Array<BatterPick | PitcherPick>).map((pick, index) => {
-                        if (m.id !== "k" && index === 0) return null;
+                        if (index === 0) return null;
                         return (
                           <li key={`${m.id}-${pick.playerId}-${pick.gamePk}`}>
                             <PickRow pick={pick} onOpen={setSelected} />
@@ -511,7 +614,42 @@ export function AppDesk() {
                   />
                 </TabsContent>
                 <TabsContent value="grades">
-                  <GradesLab log={cardLog} grading={gradeQuery.isFetching || ledgerQuery.isFetching} />
+                  <GradesLab log={cardLog} grading={gradeQuery.isFetching || ledgerQuery.isFetching} date={date} games={games.length} />
+                </TabsContent>
+                <TabsContent value="wire">
+                  <WireLab
+                    wire={result.wire}
+                    onOpen={(playerId, openMarket) => {
+                      if (openMarket === "k") {
+                        const pick = findPitcher(result, playerId);
+                        if (pick) setSelected(pick);
+                        return;
+                      }
+                      const pick = findBatter(result, playerId);
+                      if (pick) setSelected(pick);
+                    }}
+                  />
+                </TabsContent>
+                <TabsContent value="tape">
+                  <TapeLab tape={result.tape} books={result.books} />
+                </TabsContent>
+                <TabsContent value="books">
+                  <BooksLab
+                    books={result.books}
+                    wire={result.wire}
+                    onOpen={(playerId, openMarket) => {
+                      if (openMarket === "k") {
+                        const pick = findPitcher(result, playerId);
+                        if (pick) setSelected(pick);
+                        return;
+                      }
+                      const pick = findBatter(result, playerId);
+                      if (pick) setSelected(pick);
+                    }}
+                  />
+                </TabsContent>
+                <TabsContent value="sources">
+                  <SourcesLab books={result.books} />
                 </TabsContent>
                 <TabsContent value="edges">
                   <EdgesLab
@@ -572,6 +710,7 @@ export function AppDesk() {
 }
 
 function Header({
+  copy,
   date,
   onDate,
   loading,
@@ -579,6 +718,7 @@ function Header({
   gameCount,
   ledger,
 }: {
+  copy: EditionCopy;
   date: string;
   onDate: (next: string) => void;
   loading: boolean;
@@ -587,36 +727,32 @@ function Header({
   ledger: string | null;
 }) {
   return (
-    <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <p className="text-xs font-medium tracking-widest text-stone uppercase">MLB prop desk</p>
-        <h1 className="font-display mt-1 text-5xl leading-none font-semibold tracking-tight sm:text-6xl">
-          Blast Radius
-        </h1>
-        <p className="mt-3 max-w-md text-sm text-muted">
-          Live slate, RotoWire cards, PrizePicks lines, and Statcast — scored into daily 2/3/6-man slips and a top 10 home-run board.
-        </p>
-      </div>
-      <div className="flex flex-col gap-3 sm:items-end">
-        <label className="flex h-11 items-center gap-2 rounded-md bg-surface px-3 shadow-[var(--shadow-border)]">
-          <CalendarDays className="size-4 text-muted" />
-          <span className="sr-only">Date</span>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => onDate(e.target.value)}
-            className="bg-transparent text-sm text-fg outline-none"
-            suppressHydrationWarning
-          />
-        </label>
-        <Button size="lg" onClick={onAnalyze} disabled={loading} className="min-w-56">
-          {loading ? <Loader2 className="size-4 animate-spin" /> : <Radar className="size-4" />}
-          {loading ? "Analyzing slate" : "Fetch & analyze picks"}
-        </Button>
+    <header className="flex flex-col gap-4">
+      <Folio copy={copy} />
+      <Skyline copy={copy} />
+      <Nameplate />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-faint tabular-nums">
-          {gameCount} game{gameCount === 1 ? "" : "s"} · Eastern
+          {gameCount} game{gameCount === 1 ? "" : "s"} · Eastern · Home run desk
           {ledger ? ` · Ledger ${ledger}` : ""}
         </p>
+        <div className="flex w-full flex-col gap-3 sm:max-w-xs sm:flex-row sm:items-center lg:max-w-none lg:justify-end">
+          <label className="flex h-12 w-full items-center gap-2 bg-surface px-3 shadow-[var(--shadow-border)] sm:w-44">
+            <CalendarDays className="size-4 text-muted" />
+            <span className="sr-only">Date</span>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => onDate(e.target.value)}
+              className="w-full bg-transparent text-sm text-fg outline-none"
+              suppressHydrationWarning
+            />
+          </label>
+          <Button size="lg" onClick={onAnalyze} disabled={loading} className="w-full min-w-0 sm:w-auto">
+            {loading ? <Loader2 className="size-4 animate-spin" /> : <Radar className="size-4" />}
+            {loading ? "Posting" : "Fetch & analyze"}
+          </Button>
+        </div>
       </div>
     </header>
   );
@@ -625,86 +761,84 @@ function Header({
 function SlateRow({ games, loading }: { games: GameCard[]; loading: boolean }) {
   if (loading) {
     return (
-      <div className="flex gap-3 overflow-hidden">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 w-56 shrink-0 rounded-xl" />
+      <div className="panel grid grid-cols-2 gap-px overflow-hidden md:grid-cols-3 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-none" />
         ))}
       </div>
     );
   }
   if (games.length === 0) {
     return (
-      <Card className="rounded-xl px-5 py-4 text-sm text-muted">
+      <div className="border-y border-border py-4 text-sm text-muted">
         Off day or no MLB games on this date. Pick another card.
-      </Card>
+      </div>
     );
   }
   return (
-    <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
-      {games.map((game) => (
-        <article
-          key={game.gamePk}
-          className="w-56 shrink-0 rounded-xl bg-surface p-3 shadow-[var(--shadow-border)]"
-        >
-          <div className="flex items-center justify-between text-xs tracking-wide text-faint uppercase">
-            <span>{formatGameTime(game.gameDate) || game.dayNight}</span>
-            <span className="tabular-nums">{game.parkHrFactor} HR</span>
-          </div>
-          <div className="mt-2 flex items-center gap-2">
-            <img src={teamLogoUrl(game.away.id)} alt="" className="size-6 object-contain" />
-            <span className="text-sm font-medium">{game.away.abbr}</span>
-            <span className="text-faint">@</span>
-            <img src={teamLogoUrl(game.home.id)} alt="" className="size-6 object-contain" />
-            <span className="text-sm font-medium">{game.home.abbr}</span>
-          </div>
-          <p className="mt-2 truncate text-xs text-muted">
-            {game.away.probable?.name?.split(" ").slice(-1)[0] ?? "TBD"} vs{" "}
-            {game.home.probable?.name?.split(" ").slice(-1)[0] ?? "TBD"}
-          </p>
-          <p className="mt-1 flex items-center gap-1 truncate text-xs text-faint">
-            <MapPin className="size-3" />
-            {game.venueName}
-            {game.weather ? ` · ${game.weather.windLabel}` : ""}
-          </p>
-          {game.home.lineupStatus !== "none" || game.away.lineupStatus !== "none" ? (
-            <p className="mt-1 text-xs text-faint">
-              {game.home.lineupStatus === "confirmed" || game.away.lineupStatus === "confirmed"
-                ? "Confirmed cards"
-                : "Expected cards"}
-              {game.umpire ? ` · ${game.umpire}` : ""}
+    <div className="panel overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+        <p className="kicker">The slate</p>
+        <p className="text-xs text-faint tabular-nums">{games.length} parks</p>
+      </div>
+      <div className="grid grid-cols-2 gap-px bg-border md:grid-cols-3 lg:grid-cols-5">
+        {games.map((game) => (
+          <article key={game.gamePk} className="bg-surface px-3 py-3">
+            <div className="flex items-center justify-between text-[0.65rem] tracking-widest text-faint uppercase">
+              <span>{formatGameTime(game.gameDate) || game.dayNight}</span>
+              <span className="tabular-nums">{game.parkHrFactor} HR</span>
+            </div>
+            <div className="mt-2 flex items-center gap-1.5">
+              <img src={teamLogoUrl(game.away.id)} alt="" className="size-5 object-contain" />
+              <span className="text-sm font-medium">{game.away.abbr}</span>
+              <span className="text-faint">@</span>
+              <img src={teamLogoUrl(game.home.id)} alt="" className="size-5 object-contain" />
+              <span className="text-sm font-medium">{game.home.abbr}</span>
+            </div>
+            <p className="mt-1.5 truncate text-xs text-muted">
+              {game.away.probable?.name?.split(" ").slice(-1)[0] ?? "TBD"} vs{" "}
+              {game.home.probable?.name?.split(" ").slice(-1)[0] ?? "TBD"}
             </p>
-          ) : null}
-        </article>
-      ))}
+            <p className="mt-1 truncate text-xs text-faint">
+              {game.venueName}
+              {game.weather ? ` · ${game.weather.windLabel}` : ""}
+            </p>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }
 
 function EmptyBoard({
+  date,
   onAnalyze,
   games,
   log,
   grading = false,
 }: {
+  date: string;
   onAnalyze: () => void;
   games: number;
   log: DeskLogEntry[];
   grading?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-4">
-      {log.length ? <GradesLab log={log} grading={grading} /> : null}
-      <Card className="rounded-xl px-6 py-10 text-center">
-        <Crosshair className="mx-auto size-8 text-stone" />
-        <h2 className="font-display mt-4 text-2xl font-semibold">Run the desk</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-          {games ? `${games} games on the board. ` : ""}Fetch live lineups, PrizePicks lines, and Statcast, then score the 2-, 3-, and 6-man slips. Yesterday’s card grades itself from the boxes.
-        </p>
-        <Button className="mt-5" onClick={onAnalyze}>
+    <div className="flex flex-col gap-8">
+      {log.length ? <GradesLab log={log} grading={grading} date={date} games={games} /> : null}
+      <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="kicker">Tonight</p>
+          <p className="font-serif mt-1 text-sm leading-relaxed text-muted italic">
+            {games ? `${games} games on the board. ` : ""}
+            The desk posts the Great Run board and the 2/3/6 itself, then grades from the boxes. Fetch is a manual override.
+          </p>
+        </div>
+        <Button size="lg" onClick={onAnalyze} className="shrink-0">
           <Radar className="size-4" />
-          Fetch & analyze picks
+          Fetch & analyze
         </Button>
-      </Card>
+      </div>
     </div>
   );
 }
@@ -712,17 +846,68 @@ function EmptyBoard({
 function LoadingBoard({ stage }: { stage: number }) {
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted">{LOADING_COPY[stage]}</p>
-      <Skeleton className="h-40 w-full rounded-xl" />
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Skeleton key={i} className="h-16 w-full rounded-lg" />
-      ))}
+      <p className="kicker">{LOADING_COPY[stage]}</p>
+      <Skeleton className="h-36 w-full rounded-md" />
+      <div className="panel divide-y divide-border overflow-hidden">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 rounded-none" />
+        ))}
+      </div>
     </div>
   );
 }
 
-function FeaturedCard({ pick, onOpen }: { pick: BatterPick; onOpen: (pick: BatterPick) => void }) {
-  const slgLuck = luckDelta(pick.season.slg, pick.saber?.xslg);
+function HrDeskBanner({ desk }: { desk: NonNullable<AnalysisResult["hrDesk"]> }) {
+  if (desk.n <= 0 && desk.pending <= 0) return null;
+  return (
+    <div className="mb-4 grid grid-cols-2 overflow-hidden bg-paper text-ink">
+      <div className="px-5 py-4">
+        <p className="text-[0.65rem] font-medium tracking-widest uppercase text-ink/50">Great Run board</p>
+        <p className="font-display mt-1 text-4xl leading-none font-extrabold tabular-nums">
+          {desk.n > 0 ? `${desk.hits}/${desk.n}` : "Open"}
+        </p>
+      </div>
+      <div className="border-l border-ink/10 px-5 py-4">
+        <p className="text-[0.65rem] font-medium tracking-widest uppercase text-ink/50">Expected</p>
+        <p className="font-display mt-1 text-4xl leading-none font-extrabold tabular-nums">
+          {typeof desk.expected === "number" ? desk.expected.toFixed(1) : "—"}
+        </p>
+      </div>
+      <p className="col-span-2 border-t border-ink/10 px-5 py-3 text-sm text-ink/60">{desk.summary}</p>
+    </div>
+  );
+}
+
+function KDeskBanner({ picks }: { picks: PitcherPick[] }) {
+  if (!picks.length) return null;
+  const expected = picks.reduce((s, p) => s + (p.impliedK || 0), 0);
+  const std = picks.filter((p) => p.propLine?.oddsType === "standard" && p.propLine.side === "over");
+  const vsLine = std
+    .slice(0, 3)
+    .map((p) => `${p.name.split(" ").slice(-1)[0]} ${p.impliedK.toFixed(1)} vs ${p.propLine!.line}`)
+    .join(" · ");
+  return (
+    <div className="mb-4 grid grid-cols-2 overflow-hidden bg-paper text-ink">
+      <div className="px-5 py-4">
+        <p className="text-[0.65rem] font-medium tracking-widest uppercase text-ink/50">Starters priced</p>
+        <p className="font-display mt-1 text-4xl leading-none font-extrabold tabular-nums">{picks.length}</p>
+      </div>
+      <div className="border-l border-ink/10 px-5 py-4">
+        <p className="text-[0.65rem] font-medium tracking-widest uppercase text-ink/50">Board expected Ks</p>
+        <p className="font-display mt-1 text-4xl leading-none font-extrabold tabular-nums">{expected.toFixed(1)}</p>
+      </div>
+      <p className="col-span-2 border-t border-ink/10 px-5 py-3 text-sm text-ink/60">
+        {vsLine
+          ? `Standard lines: ${vsLine}. Expected Ks are K/BF × tonight's outing, mix whiff, and the lineup's punchout rate.`
+          : "PrizePicks is mostly 6.5 demons tonight. Expected Ks still rank who misses bats — a skip on the 2/3/6 is not a missing board."}
+      </p>
+    </div>
+  );
+}
+
+function FeaturedCard({ pick, onOpen }: { pick: BatterPick | PitcherPick; onOpen: (pick: BatterPick | PitcherPick) => void }) {
+  const batter = pick.market !== "k" ? (pick as BatterPick) : null;
+  const kPick = pick.market === "k" ? (pick as PitcherPick) : null;
   const indexLabel =
     pick.market === "hits"
       ? "Hits index"
@@ -732,12 +917,14 @@ function FeaturedCard({ pick, onOpen }: { pick: BatterPick; onOpen: (pick: Batte
           ? "RBI index"
           : pick.market === "sb"
             ? "SB index"
-            : "HR index";
+            : pick.market === "k"
+              ? "Expected Ks"
+              : "HR index";
   return (
     <button
       type="button"
       onClick={() => onOpen(pick)}
-      className="w-full rounded-xl bg-surface p-5 text-left shadow-[var(--shadow-border)] transition-[box-shadow,transform] duration-150 ease-out hover:shadow-[var(--shadow-border-hover)] active:scale-[0.96]"
+      className="relative w-full bg-surface p-5 text-left shadow-[var(--shadow-border)] transition-[box-shadow,transform] duration-150 ease-out hover:shadow-[var(--shadow-border-hover)] active:scale-[0.96] before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-brick"
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <img
@@ -751,21 +938,34 @@ function FeaturedCard({ pick, onOpen }: { pick: BatterPick; onOpen: (pick: Batte
               {String(pick.rank).padStart(2, "0")}
             </span>
             <Badge variant={leanVariant(pick.lean)}>{pick.lean}</Badge>
-            {pick.actual && pick.actual.hr > 0 ? <Badge variant="brick">Went yard</Badge> : null}
-            {pick.inLineup ? <Badge variant="pine">{pick.lineupSlot ? `Slot ${pick.lineupSlot}` : "In lineup"}</Badge> : null}
+            {batter?.actual && batter.actual.hr > 0 ? <Badge variant="brick">Went yard</Badge> : null}
+            {batter?.actual && batter.actual.hr === 0 && batter.gameState === "Final" ? <Badge variant="default">0 HR</Badge> : null}
+            {kPick && kPick.actualK != null && kPick.gameState === "Final" ? (
+              <Badge variant={kPick.actualK >= 6 ? "brick" : "default"}>{kPick.actualK} K</Badge>
+            ) : null}
+            {batter?.inLineup ? <Badge variant="pine">{batter.lineupSlot ? `Slot ${batter.lineupSlot}` : "In lineup"}</Badge> : null}
           </div>
-          <h2 className="font-display mt-1 text-3xl leading-none font-semibold tracking-tight">{pick.name}</h2>
+          <h2 className="font-display mt-1 text-3xl leading-[1.05] font-semibold tracking-tight">{pick.name}</h2>
           <p className="mt-2 text-sm text-muted">
             {pick.teamAbbr} vs {pick.opponentAbbr}
-            {pick.pitcherName ? ` · ${pick.pitcherName}` : ""}
+            {batter?.pitcherName ? ` · ${batter.pitcherName}` : kPick?.hand ? ` · ${kPick.hand}HP` : ""}
           </p>
           <p className="text-sm text-faint">{pick.venueName}</p>
         </div>
         <div className="shrink-0 sm:text-right">
           <p className="text-xs tracking-wider text-faint uppercase">{indexLabel}</p>
-          <p className="font-display text-5xl leading-none font-semibold tabular-nums">{pick.score}</p>
+          <p className="font-display text-5xl leading-none font-semibold tabular-nums">
+            {kPick ? kPick.impliedK.toFixed(1) : pick.score}
+          </p>
           {pick.market === "hr" ? (
-            <p className="mt-1 text-xs text-muted tabular-nums">{pick.impliedHr.toFixed(2)} implied HR</p>
+            <p className="mt-1 text-xs text-muted tabular-nums">
+              {(pick.hrPct * 100).toFixed(0)}% to go yard
+            </p>
+          ) : kPick ? (
+            <p className="mt-1 text-xs text-muted tabular-nums">
+              {kPick.kRate > 0 ? `${(kPick.kRate * 100).toFixed(0)}% K/BF` : `${kPick.pitcher.k9.toFixed(1)} K/9`}
+              {kPick.pitcher.recentK9 != null ? ` · last ${kPick.pitcher.recentK9.toFixed(1)}` : ""}
+            </p>
           ) : null}
           {pick.propLine ? (
             <p className="mt-1 text-xs text-faint">
@@ -775,43 +975,50 @@ function FeaturedCard({ pick, onOpen }: { pick: BatterPick; onOpen: (pick: Batte
           ) : null}
         </div>
       </div>
-      {pick.market === "sb" && pick.edge ? (
+      {batter?.market === "sb" && batter.edge ? (
         <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <MiniStat label="Sprint" value={fmt1(pick.edge.sprint)} />
-          <MiniStat label="HP to 1B" value={pick.edge.hpTo1b != null ? `${pick.edge.hpTo1b.toFixed(2)}s` : "—"} />
+          <MiniStat label="Sprint" value={fmt1(batter.edge.sprint)} />
+          <MiniStat label="HP to 1B" value={batter.edge.hpTo1b != null ? `${batter.edge.hpTo1b.toFixed(2)}s` : "—"} />
           <MiniStat
             label="Pitcher SB"
-            value={pick.edge.pitcherSbRate != null ? `${(pick.edge.pitcherSbRate * 100).toFixed(1)}%` : "—"}
+            value={batter.edge.pitcherSbRate != null ? `${(batter.edge.pitcherSbRate * 100).toFixed(1)}%` : "—"}
           />
           <MiniStat
             label="Catcher CS"
-            value={pick.edge.catcherCs != null ? `${(pick.edge.catcherCs * 100).toFixed(0)}%` : "—"}
+            value={batter.edge.catcherCs != null ? `${(batter.edge.catcherCs * 100).toFixed(0)}%` : "—"}
           />
         </dl>
-      ) : pick.market === "hits" && pick.saber ? (
+      ) : batter?.market === "hits" && batter.saber ? (
         <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <MiniStat label="xBA" value={fmt3(pick.saber.xba)} />
-          <MiniStat label="AVG" value={pick.season.avg.toFixed(3)} />
-          <MiniStat label="xwOBA" value={fmt3(pick.saber.xwoba)} />
-          <MiniStat label="Luck" value={luckLabel(luckDelta(pick.season.avg, pick.saber.xba))} tone={luckTone(luckDelta(pick.season.avg, pick.saber.xba))} />
+          <MiniStat label="xBA" value={fmt3(batter.saber.xba)} />
+          <MiniStat label="AVG" value={batter.season.avg.toFixed(3)} />
+          <MiniStat label="xwOBA" value={fmt3(batter.saber.xwoba)} />
+          <MiniStat label="Luck" value={luckLabel(luckDelta(batter.season.avg, batter.saber.xba))} tone={luckTone(luckDelta(batter.season.avg, batter.saber.xba))} />
         </dl>
-      ) : pick.saber ? (
+      ) : batter?.saber ? (
         <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <MiniStat label="Brl/PA" value={fmt1(pick.saber.barrelPa, "%")} />
-          <MiniStat label="xSLG" value={fmt3(pick.saber.xslg)} />
-          <MiniStat label="xwOBA" value={fmt3(pick.saber.xwoba)} />
-          <MiniStat label="Luck" value={luckLabel(slgLuck)} tone={luckTone(slgLuck)} />
+          <MiniStat label="Brl/PA" value={fmt1(batter.saber.barrelPa, "%")} />
+          <MiniStat label="Hard hit" value={fmt1(batter.saber.hardHit, "%")} />
+          <MiniStat label="Launch" value={batter.saber.launch != null ? `${batter.saber.launch.toFixed(1)}°` : "—"} />
+          <MiniStat label="xSLG" value={fmt3(batter.saber.xslg)} />
+        </dl>
+      ) : kPick ? (
+        <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <MiniStat label="K/9" value={kPick.pitcher.k9.toFixed(1)} />
+          <MiniStat label="Opp K%" value={`${(kPick.oppKRate * 100).toFixed(1)}%`} />
+          <MiniStat label="Park K" value={String(kPick.parkKFactor)} />
+          <MiniStat label="WHIP" value={kPick.pitcher.whip.toFixed(2)} />
         </dl>
       ) : null}
-      {pick.matchup ? (
+      {batter?.matchup ? (
         <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
-          <span className={`inline-block size-2 rounded-full ${familyFill(pick.matchup.family)}`} />
-          {pick.pitcherName ? `${pick.pitcherName.split(" ").slice(-1)[0]} ` : ""}
-          {pick.matchup.code} {pick.matchup.usage.toFixed(0)}%
-          {pick.matchup.batterXslg != null ? ` · ${pick.matchup.batterXslg.toFixed(3)} xSLG vs it` : ""}
+          <span className={`inline-block size-2 rounded-full ${familyFill(batter.matchup.family)}`} />
+          {batter.pitcherName ? `${batter.pitcherName.split(" ").slice(-1)[0]} ` : ""}
+          {batter.matchup.code} {batter.matchup.usage.toFixed(0)}%
+          {batter.matchup.batterXslg != null ? ` · ${batter.matchup.batterXslg.toFixed(3)} xSLG vs it` : ""}
         </p>
       ) : null}
-      {pick.edge ? <EdgeChips edge={pick.edge} isHome={pick.isHome} /> : null}
+      {batter?.edge ? <EdgeChips edge={batter.edge} isHome={batter.isHome} /> : null}
       <ul className="mt-4 grid gap-2 sm:grid-cols-3">
         {pick.reasons.map((reason) => (
           <li key={reason} className="rounded-md bg-elevated px-3 py-2 text-xs text-muted">
@@ -849,11 +1056,14 @@ function PickRow({
   pick: BatterPick | PitcherPick;
   onOpen: (pick: BatterPick | PitcherPick) => void;
 }) {
+  const batter = pick.market !== "k" ? (pick as BatterPick) : null;
+  const wentYard = batter?.market === "hr" && (batter.actual?.hr ?? 0) > 0;
+  const missedHr = batter?.market === "hr" && batter.gameState === "Final" && batter.actual && batter.actual.hr === 0;
   return (
     <button
       type="button"
       onClick={() => onOpen(pick)}
-      className="flex w-full items-center gap-3 rounded-lg bg-surface px-3 py-3 text-left shadow-[var(--shadow-border)] transition-[box-shadow,transform] duration-150 ease-out hover:shadow-[var(--shadow-border-hover)] active:scale-[0.96]"
+      className="flex w-full items-center gap-3 px-3 py-3 text-left transition-[background-color,transform] duration-150 ease-out hover:bg-elevated active:scale-[0.96]"
     >
       <span className="font-display w-8 shrink-0 text-lg text-faint tabular-nums">
         {String(pick.rank).padStart(2, "0")}
@@ -870,19 +1080,21 @@ function PickRow({
           {"pitcherName" in pick && pick.pitcherName ? ` · ${pick.pitcherName}` : ""}
         </span>
       </span>
-      <Badge variant={leanVariant(pick.lean)}>{pick.lean}</Badge>
-      <span className="font-display w-10 shrink-0 text-right text-2xl font-semibold tabular-nums">{pick.score}</span>
-      <span className="hidden w-16 shrink-0 text-right text-xs text-faint sm:block">{trailStat(pick)}</span>
+      {wentYard ? <Badge variant="brick">Yard</Badge> : missedHr ? <Badge variant="default">0 HR</Badge> : <Badge variant={leanVariant(pick.lean)}>{pick.lean}</Badge>}
+      <span className="font-display w-10 shrink-0 text-right text-2xl font-semibold tabular-nums">{pick.market === "k" ? (pick as PitcherPick).impliedK.toFixed(1) : pick.score}</span>
+      <span className="hidden w-16 shrink-0 text-right text-xs text-faint sm:block">
+        {batter?.market === "hr" ? `${(batter.hrPct * 100).toFixed(0)}%` : trailStat(pick)}
+      </span>
     </button>
   );
 }
 
 function ModelCard({ result }: { result: AnalysisResult }) {
   return (
-    <Card className="rounded-xl">
-      <div className="flex items-center gap-2 text-xs tracking-widest text-stone uppercase">
-        <Gauge className="size-3.5" />
-        Model
+    <Card>
+      <div className="flex items-center gap-2">
+        <Gauge className="size-3.5 text-stone" />
+        <p className="kicker">Model</p>
       </div>
       <p className="font-display mt-2 text-xl font-semibold">
         {result.model.name} {result.model.version}
@@ -899,18 +1111,18 @@ function ModelCard({ result }: { result: AnalysisResult }) {
 }
 
 function HrChart({ picks }: { picks: BatterPick[] }) {
-  const max = Math.max(...picks.map((p) => p.score), 1);
+  const max = Math.max(...picks.map((p) => p.hrPct || p.score / 100), 0.01);
   return (
-    <Card className="rounded-xl">
-      <p className="text-xs tracking-widest text-stone uppercase">Top 10 HR index</p>
+    <Card className="p-4">
+      <p className="kicker">P(HR) tonight</p>
       <ul className="mt-3 flex flex-col gap-2">
         {picks.map((pick) => (
-          <li key={pick.playerId} className="grid grid-cols-[72px_minmax(0,1fr)_28px] items-center gap-2">
+          <li key={pick.playerId} className="grid grid-cols-[72px_minmax(0,1fr)_36px] items-center gap-2">
             <span className="truncate text-xs text-muted">{pick.name.split(" ").slice(-1)[0]}</span>
             <span className="h-1.5 overflow-hidden rounded-full bg-elevated">
-              <span className="block h-full rounded-full bg-accent" style={{ width: `${(pick.score / max) * 100}%` }} />
+              <span className="block h-full rounded-full bg-brick" style={{ width: `${(pick.hrPct / max) * 100}%` }} />
             </span>
-            <span className="text-right text-xs tabular-nums">{pick.score}</span>
+            <span className="text-right text-xs tabular-nums">{(pick.hrPct * 100).toFixed(0)}%</span>
           </li>
         ))}
       </ul>
@@ -920,8 +1132,8 @@ function HrChart({ picks }: { picks: BatterPick[] }) {
 
 function GlossaryCard() {
   return (
-    <Card className="rounded-xl">
-      <p className="text-xs tracking-widest text-stone uppercase">Savant glossary</p>
+    <Card className="p-4">
+      <p className="kicker">Savant glossary</p>
       <ul className="mt-3 flex flex-col gap-3">
         {SABER_GLOSSARY.slice(0, 6).map((term) => (
           <li key={term.key}>
@@ -966,7 +1178,7 @@ function SavantLab({
 
   if (board.length === 0) {
     return (
-      <Card className="rounded-xl px-5 py-10 text-center text-sm text-muted">
+      <Card className="px-5 py-10 text-center text-sm text-muted">
         No Statcast rows on this slate. Run the desk again after the feed settles.
       </Card>
     );
@@ -976,7 +1188,8 @@ function SavantLab({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="font-display text-3xl font-semibold tracking-tight">Savant lab</h2>
+          <p className="kicker">Expected contact</p>
+          <h2 className="font-display mt-1 text-4xl font-semibold tracking-tight">Savant lab</h2>
           <p className="mt-1 max-w-xl text-sm text-muted">
             Expected stats and barrels for tonight's bats. Sort the board, then open a name for the full card.
             {dueCount ? ` ${dueCount} hitters are running behind their xSLG.` : ""}
@@ -1005,7 +1218,7 @@ function SavantLab({
             key={row.playerId}
             type="button"
             onClick={() => onOpen(row.playerId)}
-            className="rounded-xl bg-surface p-4 text-left shadow-[var(--shadow-border)] transition-[box-shadow] duration-150 hover:shadow-[var(--shadow-border-hover)]"
+            className="panel p-4 text-left transition-[box-shadow] duration-150 hover:shadow-[var(--shadow-border-hover)]"
           >
             <p className="text-xs tracking-widest text-faint uppercase">Loud contact {String(i + 1).padStart(2, "0")}</p>
             <p className="font-display mt-2 truncate text-2xl font-semibold">{row.name}</p>
@@ -1020,7 +1233,7 @@ function SavantLab({
         ))}
       </div>
 
-      <ol className="flex flex-col gap-2">
+      <ol className="panel divide-y divide-border overflow-hidden">
         {ranked.map((row, index) => {
           const d = luckDelta(row.slg, row.saber.xslg);
           return (
@@ -1028,7 +1241,7 @@ function SavantLab({
               <button
                 type="button"
                 onClick={() => onOpen(row.playerId)}
-                className="flex w-full items-center gap-3 rounded-lg bg-surface px-3 py-3 text-left shadow-[var(--shadow-border)] transition-[box-shadow] duration-150 hover:shadow-[var(--shadow-border-hover)]"
+                className="flex w-full items-center gap-3 px-3 py-3 text-left transition-[background-color] duration-150 hover:bg-elevated"
               >
                 <span className="font-display w-8 shrink-0 text-lg text-faint tabular-nums">
                   {String(index + 1).padStart(2, "0")}
@@ -1074,8 +1287,8 @@ function SavantLab({
         })}
       </ol>
 
-      <section className="rounded-xl bg-surface p-5 shadow-[var(--shadow-border)] lg:hidden">
-        <p className="text-xs tracking-widest text-stone uppercase">Glossary</p>
+      <section className="panel p-5 lg:hidden">
+        <p className="kicker">Glossary</p>
         <ul className="mt-3 grid gap-3 sm:grid-cols-2">
           {SABER_GLOSSARY.map((term) => (
             <li key={term.key}>
@@ -1172,6 +1385,8 @@ function PlayerSheet({
 
               {pitcher ? (
                 <dl className="mt-6 grid grid-cols-3 gap-2">
+                  <Stat label="Expected K" value={pitcher.impliedK > 0 ? pitcher.impliedK.toFixed(1) : "—"} />
+                  <Stat label="K/BF" value={pitcher.kRate > 0 ? `${(pitcher.kRate * 100).toFixed(1)}%` : "—"} />
                   <Stat label="K/9" value={pitcher.pitcher.k9.toFixed(1)} />
                   <Stat
                     label="xERA"
@@ -1181,6 +1396,10 @@ function PlayerSheet({
                   <Stat label="HR/9" value={pitcher.pitcher.hr9.toFixed(2)} />
                   <Stat label="WHIP" value={pitcher.pitcher.whip.toFixed(2)} />
                   <Stat label="Opp K%" value={`${(pitcher.oppKRate * 100).toFixed(1)}%`} />
+                  <Stat
+                    label="Last 10"
+                    value={pitcher.pitcher.recentK9 != null ? `${pitcher.pitcher.recentK9.toFixed(1)} K/9` : "—"}
+                  />
                 </dl>
               ) : null}
 
@@ -1264,6 +1483,8 @@ function StatcastBlock({
         <Stat label="xwOBA" value={fmt3(saber.xwoba)} />
         <Stat label="Brl/PA" value={fmt1(saber.barrelPa, "%")} />
         <Stat label="Hard hit" value={fmt1(saber.hardHit, "%")} />
+        <Stat label="Launch" value={saber.launch != null ? `${saber.launch.toFixed(1)}°` : "—"} />
+        <Stat label="Sweet" value={fmt1(saber.sweetSpot, "%")} />
         <Stat label="Avg EV" value={fmt1(saber.evAvg)} />
         <Stat label="Max EV" value={fmt1(saber.evMax)} />
         <Stat label="wRC+" value={fmt0(saber.wrcPlus)} />
@@ -1289,7 +1510,8 @@ function EdgeChips({ edge, isHome }: { edge: PropEdge; isHome: boolean }) {
   if (edge.vsHand && edge.vsHand.pa >= 25) {
     chips.push(`${edge.vsHand.slg.toFixed(3)} SLG vs ${edge.vsHandCode === "vl" ? "LHP" : "RHP"}`);
   }
-  if (edge.fbRate != null) chips.push(`${edge.fbRate.toFixed(0)}% FB`);
+  if (edge.fbRate != null && edge.pullRate != null) chips.push(`${edge.fbRate.toFixed(0)}% FB · ${edge.pullRate.toFixed(0)}% pull`);
+  else if (edge.fbRate != null) chips.push(`${edge.fbRate.toFixed(0)}% FB`);
   if (edge.sprint != null && edge.sprint >= 28) chips.push(`${edge.sprint.toFixed(1)} ft/s`);
   if (edge.ha && edge.ha.pa >= 30) chips.push(`${edge.ha.ops.toFixed(3)} OPS ${isHome ? "home" : "away"}`);
   if (!chips.length) return null;

@@ -10,33 +10,73 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BoardRouteImport } from './routes/board'
+import { Route as NflRouteImport } from './routes/nfl'
+import { Route as NhlRouteImport } from './routes/nhl'
+import { Route as ApiDeskTickRouteImport } from './routes/api/desk.tick'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BoardRoute = BoardRouteImport.update({
+  id: '/board',
+  path: '/board',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NflRoute = NflRouteImport.update({
+  id: '/nfl',
+  path: '/nfl',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NhlRoute = NhlRouteImport.update({
+  id: '/nhl',
+  path: '/nhl',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDeskTickRoute = ApiDeskTickRouteImport.update({
+  id: '/api/desk/tick',
+  path: '/api/desk/tick',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/board': typeof BoardRoute
+  '/nfl': typeof NflRoute
+  '/nhl': typeof NhlRoute
+  '/api/desk/tick': typeof ApiDeskTickRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/board': typeof BoardRoute
+  '/nfl': typeof NflRoute
+  '/nhl': typeof NhlRoute
+  '/api/desk/tick': typeof ApiDeskTickRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/board': typeof BoardRoute
+  '/nfl': typeof NflRoute
+  '/nhl': typeof NhlRoute
+  '/api/desk/tick': typeof ApiDeskTickRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/board' | '/nfl' | '/nhl' | '/api/desk/tick'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/board' | '/nfl' | '/nhl' | '/api/desk/tick'
+  id: '__root__' | '/' | '/board' | '/nfl' | '/nhl' | '/api/desk/tick'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BoardRoute: typeof BoardRoute
+  NflRoute: typeof NflRoute
+  NhlRoute: typeof NhlRoute
+  ApiDeskTickRoute: typeof ApiDeskTickRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +88,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/board': {
+      id: '/board'
+      path: '/board'
+      fullPath: '/board'
+      preLoaderRoute: typeof BoardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nfl': {
+      id: '/nfl'
+      path: '/nfl'
+      fullPath: '/nfl'
+      preLoaderRoute: typeof NflRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nhl': {
+      id: '/nhl'
+      path: '/nhl'
+      fullPath: '/nhl'
+      preLoaderRoute: typeof NhlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/desk/tick': {
+      id: '/api/desk/tick'
+      path: '/api/desk/tick'
+      fullPath: '/api/desk/tick'
+      preLoaderRoute: typeof ApiDeskTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BoardRoute: BoardRoute,
+  NflRoute: NflRoute,
+  NhlRoute: NhlRoute,
+  ApiDeskTickRoute: ApiDeskTickRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

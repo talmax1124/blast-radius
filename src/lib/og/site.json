@@ -1,7 +1,7 @@
 {
-  "title": "Blast Radius",
+  "title": "MLB GREAT RUN",
+  "description": "MLB home-run desk. Daily Great Run board, PrizePicks 2/3/6, Statcast barrels.",
+  "color": "7D9A86",
   "card": "custom",
-  "description": "MLB home-run and prop desk. Daily 2/3/6 slips graded from the boxes.",
-  "banner": "/x-banner.jpg",
-  "color": "7D9A86"
+  "banner": "/x-banner.jpg"
 }

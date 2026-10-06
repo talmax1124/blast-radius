@@ -8,7 +8,7 @@ export function TabsList({ className, ...props }: ComponentProps<typeof TabsPrim
   return (
     <TabsPrimitive.List
       className={cn(
-        "inline-flex h-11 w-full items-center gap-1 overflow-x-auto rounded-lg bg-surface p-1 shadow-[var(--shadow-border)]",
+        "flex h-auto w-full min-w-0 items-end gap-0 overflow-x-auto border-b border-border bg-transparent p-0",
         className,
       )}
       {...props}
@@ -20,7 +20,7 @@ export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsP
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "inline-flex h-9 min-w-16 flex-1 items-center justify-center whitespace-nowrap rounded-md px-3 text-xs font-medium uppercase tracking-wider text-muted transition-[color,background-color] duration-150 data-[state=active]:bg-elevated data-[state=active]:text-fg",
+        "inline-flex h-11 shrink-0 items-center justify-center whitespace-nowrap border-b-2 border-transparent px-3 text-xs font-medium tracking-widest uppercase text-muted transition-[color,border-color] duration-150 ease-out data-[state=active]:border-brick data-[state=active]:text-fg",
         className,
       )}
       {...props}
@@ -29,5 +29,5 @@ export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsP
 }
 
 export function TabsContent({ className, ...props }: ComponentProps<typeof TabsPrimitive.Content>) {
-  return <TabsPrimitive.Content className={cn("mt-4 outline-none", className)} {...props} />;
+  return <TabsPrimitive.Content className={cn("mt-6 outline-none", className)} {...props} />;
 }

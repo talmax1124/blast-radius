@@ -117,7 +117,7 @@ export function ArsenalLab({
 
   if (board.length === 0) {
     return (
-      <Card className="rounded-xl px-5 py-10 text-center text-sm text-muted">
+      <Card className="px-5 py-10 text-center text-sm text-muted">
         No starter arsenals on this slate. Run the desk again after the feed settles.
       </Card>
     );
@@ -126,7 +126,8 @@ export function ArsenalLab({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h2 className="font-display text-3xl font-semibold tracking-tight">Arsenal lab</h2>
+        <p className="kicker">Pitch mix</p>
+        <h2 className="font-display mt-1 text-4xl font-semibold tracking-tight">Arsenal lab</h2>
         <p className="mt-1 max-w-xl text-sm text-muted">
           Statcast pitch types for tonight's starters. Mix bars, then open a name for velo, whiff, and run value.
         </p>
@@ -156,7 +157,7 @@ export function ArsenalLab({
                 key={row.playerId}
                 type="button"
                 onClick={() => onOpen(row.playerId)}
-                className="rounded-xl bg-surface p-4 text-left shadow-[var(--shadow-border)] transition-[box-shadow] duration-150 hover:shadow-[var(--shadow-border-hover)]"
+                className="panel p-4 text-left transition-[box-shadow] duration-150 hover:shadow-[var(--shadow-border-hover)]"
               >
                 <p className="text-xs tracking-widest text-faint uppercase">
                   Wipeout primary {String(i + 1).padStart(2, "0")}
@@ -188,7 +189,7 @@ export function ArsenalLab({
               <button
                 type="button"
                 onClick={() => onOpen(row.playerId)}
-                className="w-full rounded-xl bg-surface p-4 text-left shadow-[var(--shadow-border)] transition-[box-shadow] duration-150 hover:shadow-[var(--shadow-border-hover)]"
+                className="panel w-full p-4 text-left transition-[box-shadow] duration-150 hover:shadow-[var(--shadow-border-hover)]"
               >
                 <div className="flex items-start gap-3">
                   <img
@@ -234,7 +235,7 @@ export function ArsenalLab({
         })}
       </ol>
 
-      <section className="rounded-xl bg-surface p-5 shadow-[var(--shadow-border)] lg:hidden">
+      <section className="panel p-5 lg:hidden">
         <p className="text-xs tracking-widest text-stone uppercase">Pitch glossary</p>
         <ul className="mt-3 grid gap-3 sm:grid-cols-2">
           {PITCH_GLOSSARY.map((term) => (
@@ -251,7 +252,7 @@ export function ArsenalLab({
 
 export function PitchGlossaryCard() {
   return (
-    <Card className="rounded-xl">
+    <Card>
       <p className="text-xs tracking-widest text-stone uppercase">Pitch glossary</p>
       <ul className="mt-3 flex flex-col gap-3">
         {PITCH_GLOSSARY.map((term) => (

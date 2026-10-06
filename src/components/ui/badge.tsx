@@ -3,14 +3,14 @@ import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tracking-wide uppercase",
+  "inline-flex items-center rounded-sm px-1.5 py-0.5 text-[0.65rem] font-medium tracking-widest uppercase",
   {
     variants: {
       variant: {
         default: "bg-elevated text-muted",
-        smash: "bg-brick/15 text-brick",
-        strong: "bg-pine/15 text-pine",
-        lean: "bg-accent/10 text-accent",
+        smash: "bg-brick text-paper",
+        strong: "bg-pine/20 text-pine",
+        lean: "bg-paper/10 text-paper",
         spec: "bg-elevated text-faint",
         brick: "bg-brick/15 text-brick",
         pine: "bg-pine/15 text-pine",

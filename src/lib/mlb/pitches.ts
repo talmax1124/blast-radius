@@ -1,5 +1,5 @@
-import type { PitchFamily, PitchMatchup, PitchTypeRow } from "./types";
-import { clamp } from "./parse";
+import type { PitchFamily, PitchMatchup, PitchTypeRow } from "./types.ts";
+import { clamp } from "./parse.ts";
 
 export const PITCH_META: Record<string, { name: string; family: PitchFamily }> = {
   FF: { name: "4-Seam", family: "heat" },

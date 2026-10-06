@@ -15,6 +15,7 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "climate", label: "K climate" },
   { id: "luck", label: "Due" },
   { id: "home", label: "Home" },
+  { id: "night", label: "Night" },
   { id: "rbi", label: "RBI" },
 ];
 
@@ -26,6 +27,7 @@ const KIND_TONE: Record<EdgeKind, string> = {
   climate: "text-stone",
   luck: "text-pine",
   home: "text-fg",
+  night: "text-brick",
   rbi: "text-fg",
 };
 
@@ -48,7 +50,7 @@ export function EdgesLab({
 
   if (board.length === 0) {
     return (
-      <Card className="rounded-xl px-5 py-10 text-center text-sm text-muted">
+      <Card className="px-5 py-10 text-center text-sm text-muted">
         No live edges on this slate. Run the desk again after the feeds settle.
       </Card>
     );
@@ -57,9 +59,10 @@ export function EdgesLab({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h2 className="font-display text-3xl font-semibold tracking-tight">Edges lab</h2>
+        <p className="kicker">Matchup levers</p>
+        <h2 className="font-display mt-1 text-4xl font-semibold tracking-tight">Edges lab</h2>
         <p className="mt-1 max-w-xl text-sm text-muted">
-          Platoon splits, steal climate, fly-ball parks, mix, luck, and table-setters — the extra levers on every prop.
+          Platoon splits, night mashers, fly-ball parks, mix, luck, and table-setters — the extra levers on every prop.
         </p>
       </div>
 
@@ -85,7 +88,7 @@ export function EdgesLab({
               key={row.id}
               type="button"
               onClick={() => row.playerId && onOpen(row.playerId, row.market)}
-              className="rounded-xl bg-surface p-4 text-left shadow-[var(--shadow-border)] transition-[box-shadow] duration-150 hover:shadow-[var(--shadow-border-hover)]"
+              className="panel p-4 text-left transition-[box-shadow] duration-150 hover:shadow-[var(--shadow-border-hover)]"
             >
               <p className="text-xs tracking-widest text-faint uppercase">
                 {row.title} {String(i + 1).padStart(2, "0")}
@@ -130,7 +133,7 @@ export function EdgesLab({
         ))}
       </ol>
 
-      <section className="rounded-xl bg-surface p-5 shadow-[var(--shadow-border)] lg:hidden">
+      <section className="panel p-5 lg:hidden">
         <p className="text-xs tracking-widest text-stone uppercase">Edge glossary</p>
         <ul className="mt-3 grid gap-3 sm:grid-cols-2">
           {EDGE_GLOSSARY.map((term) => (
@@ -147,7 +150,7 @@ export function EdgesLab({
 
 export function EdgeGlossaryCard() {
   return (
-    <Card className="rounded-xl">
+    <Card>
       <p className="text-xs tracking-widest text-stone uppercase">Edge glossary</p>
       <ul className="mt-3 flex flex-col gap-3">
         {EDGE_GLOSSARY.map((term) => (

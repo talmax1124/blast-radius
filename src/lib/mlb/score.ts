@@ -1,4 +1,4 @@
-import { mixProfile, primaryOf } from "./pitches";
+import { familyMix, mixProfile, primaryOf } from "./pitches.ts";
 import type {
   BatterSeason,
   Factor,
@@ -10,8 +10,9 @@ import type {
   SaberCard,
   SplitCard,
   WeatherSnap,
-} from "./types";
-import { clamp } from "./parse";
+} from "./types.ts";
+import { clamp, formatHourEt, formatShortDate } from "./parse.ts";
+import { parkHandHr, type Roof } from "./parks.ts";
 
 export function leanFrom(score: number): Lean {
   if (score >= 78) return "smash";
@@ -44,6 +45,17 @@ export type MatchupCtx = {
   edge: PropEdge | null;
   flags?: RecencyFlag[];
   reverse?: boolean;
+  dayNight?: string;
+  roof?: Roof;
+  venueId?: number;
+  batSide?: "L" | "R" | "S" | null;
+  gameHour?: number | null;
+  dn?: { d: SplitCard | null; n: SplitCard | null } | null;
+  hrHours?: number[];
+  lastHrDate?: string | null;
+  leagueDayHrPa?: number;
+  leagueNightHrPa?: number;
+  leagueHours?: number[];
 };
 
 function saberOr(value: number | null | undefined, lo: number, hi: number, fallback = 0.45): number {
@@ -164,7 +176,7 @@ export function hrDrought(
 ): boolean {
   const hr = form?.weekHr ?? form?.hr ?? 0;
   const pa = form?.weekPa ?? form?.pa ?? 0;
-  return pa >= 10 && hr === 0;
+  return pa >= 22 && hr === 0;
 }
 
 export function recencyFlags(season: BatterSeason, week: WeekForm | null | undefined): RecencyFlag[] {
@@ -189,13 +201,208 @@ function recencyBoost(flags: RecencyFlag[] | undefined, kind: "hr" | "count"): n
   const hot = list.includes("hot");
   const cold = list.includes("cold");
   if (kind === "hr") {
-    if (hot) return 1.03;
-    if (cold) return 0.82;
+    if (hot) return 1.05;
+    if (cold) return 0.94;
     return 1;
   }
-  if (hot) return 1.07;
-  if (cold) return 0.93;
+  if (hot) return 1.04;
+  if (cold) return 0.84;
   return 1;
+}
+
+export function expectedPaOf(slot: number): number {
+  if (slot <= 2) return 4.4;
+  if (slot <= 5) return 4.15;
+  if (slot <= 7) return 3.85;
+  return 3.55;
+}
+
+/** Launch angle peaks for HR around 25–32°. Ground balls and pop-ups do not go out. */
+export function launchHrWindow(angle: number | null | undefined): { score: number; detail: string } {
+  if (angle == null || !Number.isFinite(angle)) return { score: 0.5, detail: "—" };
+  const dist = Math.abs(angle - 28);
+  return {
+    score: clamp(1 - dist / 22, 0.08, 1),
+    detail: `${angle.toFixed(1)}°`,
+  };
+}
+
+/** Pull-side fly balls are the HR shape. Typical is ~0.10; mashers sit 0.15+. */
+export function pullAirScore(fb: number | null | undefined, pull: number | null | undefined): { score: number; detail: string; mult: number } {
+  if (fb == null && pull == null) return { score: 0.5, detail: "—", mult: 1 };
+  const f = fb ?? 24;
+  const p = pull ?? 40;
+  const air = (f / 100) * (p / 100);
+  return {
+    score: unit(air, 0.055, 0.175),
+    detail: `${f.toFixed(0)}% FB · ${p.toFixed(0)}% pull`,
+    mult: clamp(0.88 + air * 1.35, 0.88, 1.2),
+  };
+}
+
+/**
+ * Shrink last-week HR rate toward the season rate. A 0-HR week is noise for a
+ * 35-HR bat — it is not a 0.06 form score.
+ */
+export function bayesHrPa(
+  season: BatterSeason,
+  week: WeekForm | null | undefined,
+  recentHrPa: number | null,
+): { rate: number; form: number; detail: string } {
+  const seasonRate = season.hr / Math.max(season.pa, 1);
+  const weekPa = week?.pa ?? 0;
+  const weekHr = week?.hr ?? 0;
+  const recPa = weekPa >= 8 ? weekPa : recentHrPa != null ? 28 : 0;
+  const recHr = weekPa >= 8 ? weekHr : recentHrPa != null ? recentHrPa * recPa : 0;
+  const w = recPa > 0 ? clamp(recPa / 52, 0, 0.3) : 0;
+  const recRate = recPa > 0 ? recHr / recPa : seasonRate;
+  const rate = (1 - w) * seasonRate + w * recRate;
+  const detail =
+    weekPa >= 8
+      ? `${weekHr} HR / ${weekPa} PA last week`
+      : recentHrPa != null
+        ? `${(recentHrPa * 100).toFixed(1)}% PA last 10`
+        : `${season.hr} HR season`;
+  return { rate, form: unit(rate, 0.018, 0.075), detail };
+}
+
+/** ISO maps to HR/PA at ~0.28. A .250 ISO bat is a ~0.070 HR/PA threat. */
+export function isoHrPa(iso: number): number {
+  return clamp(iso * 0.28, 0.004, 0.12);
+}
+
+/** HR/9 plus fly-ball tilt. Ground-ball aces with 0.7 HR/9 are not the same as fly-ball 1.6s. */
+export function pitcherHrEnv(hr9: number, goAo: number | null | undefined): { score: number; detail: string } {
+  const hrU = unit(hr9, 0.55, 1.85);
+  const flyU = unit(1.5 - (goAo ?? 1), 0.15, 1.05);
+  return {
+    score: clamp(0.68 * hrU + 0.32 * flyU, 0, 1),
+    detail: `${hr9.toFixed(2)} HR/9 · ${(goAo ?? 1).toFixed(2)} GO/AO`,
+  };
+}
+
+/** 97+ mph four-seamers cut HR; 92 mph heat is liftable. */
+export function fbVeloHr(arsenal: PitchTypeRow[] | null | undefined): { score: number; detail: string; mult: number } {
+  const heat = (arsenal ?? []).filter((p) => p.family === "heat" && p.velo != null && p.velo > 0);
+  if (!heat.length) return { score: 0.5, detail: "—", mult: 1 };
+  const wVelo = heat.reduce((s, p) => s + (p.velo ?? 0) * p.usage, 0);
+  const wUse = heat.reduce((s, p) => s + p.usage, 0) || 1;
+  const velo = wVelo / wUse;
+  return {
+    score: unit(97.5 - velo, 0.4, 6),
+    detail: `${velo.toFixed(1)} mph FB`,
+    mult: clamp(1.08 - (velo - 93) / 50, 0.9, 1.08),
+  };
+}
+
+/** Season HR rate vs that hand — more HR-specific than SLG. */
+export function vsHandHrRate(split: SplitCard | null | undefined): { score: number; rate: number | null; detail: string } {
+  if (!split || split.pa < 40) return { score: 0.5, rate: null, detail: "—" };
+  const rate = split.hr / Math.max(split.pa, 1);
+  return {
+    score: unit(rate, 0.015, 0.08),
+    rate,
+    detail: `${split.hr} HR / ${split.pa} PA vs hand`,
+  };
+}
+
+/** Barrels + launch window + pull-air + hard hit as one quality 0–1. */
+export function contactShape(opts: { barrel: number; launch: number; air: number; hard: number }): number {
+  return clamp(0.42 * opts.barrel + 0.22 * opts.launch + 0.2 * opts.air + 0.16 * opts.hard, 0.05, 0.98);
+}
+
+export function isNightSlate(dayNight: string | undefined, gameHour: number | null | undefined): boolean {
+  if (dayNight === "day") return false;
+  if (dayNight === "night") return true;
+  if (gameHour == null) return true;
+  return gameHour >= 17 || gameHour < 5;
+}
+
+function hourDist(a: number, b: number): number {
+  const d = Math.abs(((a % 24) + 24) % 24 - ((b % 24) + 24) % 24);
+  return Math.min(d, 24 - d);
+}
+
+/**
+ * Player day/night HR/PA, shrunk toward season + league. Night games run a bit
+ * louder league-wide (~5–8%), but the live tell is the bat's own split:
+ * Alvarez is a night masher, Judge has been louder in the day this year.
+ */
+export function nightHrFit(opts: {
+  dn?: { d: SplitCard | null; n: SplitCard | null } | null;
+  dayNight?: string;
+  gameHour?: number | null;
+  seasonHrPa: number;
+  leagueDayHrPa?: number;
+  leagueNightHrPa?: number;
+  lastHrDate?: string | null;
+}): { score: number; mult: number; detail: string; rate: number | null; night: boolean } {
+  const night = isNightSlate(opts.dayNight, opts.gameHour);
+  const leagueDay = opts.leagueDayHrPa ?? 0.032;
+  const leagueNight = opts.leagueNightHrPa ?? 0.035;
+  const leagueRate = night ? leagueNight : leagueDay;
+  const split = night ? opts.dn?.n : opts.dn?.d;
+  const other = night ? opts.dn?.d : opts.dn?.n;
+  const label = night ? "at night" : "in the day";
+  const last = opts.lastHrDate ? ` · last yard ${formatShortDate(opts.lastHrDate)}` : "";
+
+  if (!split || split.pa < 50) {
+    const mult = night ? 1.05 : 0.96;
+    return {
+      score: night ? 0.56 : 0.44,
+      mult,
+      detail: night ? `Night slate · league +5%${last}` : `Day game · league −4%${last}`,
+      rate: null,
+      night,
+    };
+  }
+
+  const rate = split.hr / Math.max(split.pa, 1);
+  const w = clamp(split.pa / 220, 0, 0.75);
+  const prior = 0.62 * opts.seasonHrPa + 0.38 * leagueRate;
+  const shrunk = (1 - w) * prior + w * rate;
+  const mult = clamp(shrunk / Math.max(opts.seasonHrPa, 0.018), 0.82, 1.22);
+  let detail = `${split.hr} HR / ${split.pa} PA ${label}`;
+  if (other && other.pa >= 40) {
+    const oRate = other.hr / Math.max(other.pa, 1);
+    const lift = rate / Math.max(oRate, 0.008);
+    detail += ` · ${lift.toFixed(2)}x vs ${night ? "day" : "night"}`;
+  }
+  detail += last;
+  return {
+    score: unit(shrunk, 0.018, 0.075),
+    mult,
+    detail,
+    rate,
+    night,
+  };
+}
+
+/**
+ * First-pitch hour of the games this bat actually went yard, matched to
+ * tonight's first pitch. Needs 8+ homers; a 3-hour window around first pitch.
+ */
+export function hrClockFit(
+  hours: number[] | null | undefined,
+  gameHour: number | null | undefined,
+  leagueHours?: number[] | null,
+): { score: number; mult: number; detail: string } {
+  if (gameHour == null || !hours || hours.length < 8) {
+    return { score: 0.5, mult: 1, detail: "—" };
+  }
+  const window = hours.filter((h) => hourDist(h, gameHour) <= 2).length;
+  const share = window / hours.length;
+  const league = leagueHours && leagueHours.length >= 40
+    ? leagueHours.filter((h) => hourDist(h, gameHour) <= 2).length / leagueHours.length
+    : gameHour >= 17 || gameHour < 5
+      ? 0.58
+      : 0.28;
+  const lift = share / Math.max(league, 0.12);
+  return {
+    score: unit(share, 0.16, 0.72),
+    mult: clamp(0.94 + (lift - 1) * 0.16, 0.9, 1.12),
+    detail: `${window} of ${hours.length} yards in games starting ~${formatHourEt(gameHour)}`,
+  };
 }
 
 export function scoreHomeRun(season: BatterSeason, recentHrPa: number | null, ctx: MatchupCtx, week: WeekForm | null = null) {
@@ -206,110 +413,159 @@ export function scoreHomeRun(season: BatterSeason, recentHrPa: number | null, ct
   const isoU = unit(iso, 0.11, 0.34);
   const flags = ctx.flags ?? recencyFlags(season, week);
   const drought = flags.includes("drought") || hrDrought(week);
-  const coldTen = recentHrPa != null && recentHrPa < 0.015;
-  const form = drought ? 0.06 : recentHrPa == null ? power : unit(recentHrPa, 0.008, 0.09);
-  const formDetail = drought
-    ? `0 HR last ${week?.games ?? 6}g / ${week?.pa ?? "?"} PA`
-    : recentHrPa == null
-      ? "Season rate"
-      : `${(recentHrPa * 100).toFixed(1)}% PA last 10`;
+  const bayes = bayesHrPa(season, week, recentHrPa);
   const hr9 = ctx.edge?.pitcherVsHandHr9 ?? ctx.pitcher?.hr9 ?? 1.15;
   const goAo = ctx.pitcher?.goAo ?? 1.0;
-  const pitchHr = unit(hr9, 0.55, 1.85);
-  const fly = unit(1.4 - goAo, 0.1, 0.9);
-  const park = unit(ctx.parkHr, 88, 118);
-  const weather = ctx.weather?.carry ?? 0.45;
+  const env = pitcherHrEnv(hr9, goAo);
+  const parkAdj = parkHandHr(ctx.venueId ?? 0, ctx.batSide, ctx.parkHr);
+  const park = unit(parkAdj, 88, 118);
+  const roof = ctx.roof ?? "open";
+  const weather = roof === "dome" ? 0.5 : (ctx.weather?.carry ?? 0.45);
+  const weatherDetail = roof === "dome" ? "Dome" : (ctx.weather?.windLabel ?? "No reading");
   const slot = unit(10 - ctx.lineupSlot, 1, 9);
   const saber = ctx.saber;
   const barrel = saberOr(saber?.barrelPa, 1.2, 9.5);
   const xslg = saberOr(saber?.xslg, 0.38, 0.64);
   const xwoba = saberOr(saber?.xwoba, 0.3, 0.42);
+  const xIso = saber?.xslg != null && saber?.xba != null ? saber.xslg - saber.xba : iso;
+  const xIsoU = unit(xIso, 0.1, 0.32);
   const mix = pitchMixHr(ctx.pitcher?.arsenal, ctx.vsPitches);
   const platoon = platoonFactor(ctx);
   const fb = saberOr(ctx.edge?.fbRate, 18, 38);
   const pull = saberOr(ctx.edge?.pullRate, 32, 52);
+  const air = pullAirScore(ctx.edge?.fbRate, ctx.edge?.pullRate);
   const ha = haFactor(ctx, "slg");
   const dueRaw = saber?.xslg != null ? unit(saber.xslg - season.slg + 0.01, -0.06, 0.08) : 0.5;
-  const due = drought ? Math.min(dueRaw, 0.2) : dueRaw;
+  const due = drought ? Math.min(dueRaw, 0.42) : dueRaw;
   const ace = aceSuppress(ctx.pitcher);
   const formBoost = recencyBoost(flags, "hr");
   const loudMix = mix.hrMult >= 1.18;
+  const launch = launchHrWindow(saber?.launch);
+  const hard = saberOr(saber?.hardHit, 28, 55);
+  const sweet = saberOr(saber?.sweetSpot, 28, 42);
+  const ev = saberOr(saber?.evAvg, 86, 96);
+  const evMax = saberOr(saber?.evMax, 108, 118);
+  const wrc = saberOr(saber?.wrcPlus, 85, 165);
+  const heat = familyMix(ctx.pitcher?.arsenal).heat;
+  const heatU = ctx.pitcher?.arsenal?.length ? unit(heat, 28, 68) : 0.5;
+  const nightFit = nightHrFit({
+    dn: ctx.dn ?? (ctx.edge?.dn && ctx.edge.dnCode ? { d: ctx.edge.dnCode === "d" ? ctx.edge.dn : null, n: ctx.edge.dnCode === "n" ? ctx.edge.dn : null } : null),
+    dayNight: ctx.dayNight,
+    gameHour: ctx.gameHour,
+    seasonHrPa: hrPa,
+    leagueDayHrPa: ctx.leagueDayHrPa,
+    leagueNightHrPa: ctx.leagueNightHrPa,
+    lastHrDate: ctx.lastHrDate,
+  });
+  const clock = hrClockFit(ctx.hrHours, ctx.gameHour, ctx.leagueHours);
+  const velo = fbVeloHr(ctx.pitcher?.arsenal);
+  const vsHr = vsHandHrRate(ctx.edge?.vsHand);
+  const shape = contactShape({ barrel, launch: launch.score, air: air.score, hard });
+  const porch = clamp(park * air.score, 0, 1);
+  const handBit = ctx.batSide === "L" ? "LHB" : ctx.batSide === "R" ? "RHB" : "";
 
   const factors: Factor[] = [
     { key: "power", label: "Power", score: power, detail: `${season.hr} HR · ${(hrPa * 100).toFixed(1)}% PA` },
-    { key: "form", label: drought ? "Drought" : flags.includes("hot") ? "Hot" : flags.includes("cold") ? "Cold" : "Last 10", score: form, detail: formDetail },
+    { key: "form", label: drought ? "Quiet week" : flags.includes("hot") ? "Hot" : flags.includes("cold") ? "Cold" : "Form", score: bayes.form, detail: bayes.detail },
     { key: "barrel", label: "Barrels/PA", score: barrel, detail: saber?.barrelPa != null ? `${saber.barrelPa.toFixed(1)}%` : "—" },
+    { key: "shape", label: "Contact shape", score: shape, detail: `brl/launch/pull-air` },
+    { key: "hard", label: "Hard hit", score: hard, detail: saber?.hardHit != null ? `${saber.hardHit.toFixed(0)}%` : "—" },
+    { key: "launch", label: "Launch", score: launch.score, detail: launch.detail },
     { key: "xslg", label: "xSLG", score: xslg, detail: saber?.xslg != null ? saber.xslg.toFixed(3) : "—" },
+    { key: "xiso", label: "xISO", score: xIsoU, detail: saber?.xslg != null && saber?.xba != null ? xIso.toFixed(3) : iso.toFixed(3) },
     { key: "mix", label: "Pitch mix", score: mix.score, detail: mix.detail },
     { key: "platoon", label: "Platoon", score: platoon.score, detail: platoon.detail },
-    { key: "fly", label: "Fly ball", score: fb, detail: ctx.edge?.fbRate != null ? `${ctx.edge.fbRate.toFixed(0)}% FB` : "—" },
+    { key: "vshr", label: "vs-hand HR", score: vsHr.score, detail: vsHr.detail },
+    { key: "air", label: "Pull air", score: air.score, detail: air.detail },
     { key: "iso", label: "ISO", score: isoU, detail: iso.toFixed(3) },
-    { key: "pitch", label: "Pitcher HR/9", score: pitchHr, detail: ctx.pitcher ? hr9.toFixed(2) : "League" },
-    { key: "park", label: "Park", score: park, detail: `${ctx.parkHr} HR factor` },
+    { key: "pitch", label: "Pitcher HR env", score: env.score, detail: ctx.pitcher ? env.detail : "League" },
+    { key: "velo", label: "FB velo", score: velo.score, detail: velo.detail },
+    { key: "heat", label: "Opp heat", score: heatU, detail: ctx.pitcher?.arsenal?.length ? `${Math.round(heat)}% FB` : "—" },
+    { key: "park", label: "Park", score: park, detail: `${parkAdj} HR factor${handBit ? ` · ${handBit}` : ""}${roof === "dome" ? " · dome" : ""}` },
+    { key: "porch", label: "Porch", score: porch, detail: `pull-air × park` },
     { key: "pull", label: "Pull", score: pull, detail: ctx.edge?.pullRate != null ? `${ctx.edge.pullRate.toFixed(0)}%` : "—" },
     { key: "home", label: ctx.isHome ? "Home" : "Away", score: ha.score, detail: ha.detail },
-    { key: "weather", label: "Air", score: weather, detail: ctx.weather?.windLabel ?? "No reading" },
+    { key: "night", label: nightFit.night ? "Night HR" : "Day HR", score: nightFit.score, detail: nightFit.detail },
+    { key: "clock", label: "HR clock", score: clock.score, detail: clock.detail },
+    { key: "weather", label: "Air", score: weather, detail: weatherDetail },
     { key: "xwoba", label: "xwOBA", score: xwoba, detail: saber?.xwoba != null ? saber.xwoba.toFixed(3) : "—" },
+    { key: "wrc", label: "wRC+", score: wrc, detail: saber?.wrcPlus != null ? String(Math.round(saber.wrcPlus)) : "—" },
+    { key: "ev", label: "Avg EV", score: ev, detail: saber?.evAvg != null ? `${saber.evAvg.toFixed(1)} mph` : "—" },
     { key: "due", label: "Due", score: due, detail: saber?.xslg != null ? `${(saber.xslg - season.slg >= 0 ? "+" : "")}${(saber.xslg - season.slg).toFixed(3)} xSLG-SLG` : "—" },
     { key: "ace", label: "Opp starter", score: ace.score, detail: ace.detail },
     { key: "order", label: "Order", score: slot, detail: `Slot ${ctx.lineupSlot}` },
+    { key: "fly", label: "Fly ball", score: fb, detail: ctx.edge?.fbRate != null ? `${ctx.edge.fbRate.toFixed(0)}% FB` : "—" },
+    { key: "sweet", label: "Sweet spot", score: sweet, detail: saber?.sweetSpot != null ? `${saber.sweetSpot.toFixed(0)}%` : "—" },
+    { key: "evmax", label: "Max EV", score: evMax, detail: saber?.evMax != null ? `${saber.evMax.toFixed(1)} mph` : "—" },
   ];
 
   const raw =
-    0.08 * power +
-    0.12 * form +
-    0.08 * barrel +
-    0.06 * xslg +
-    0.14 * mix.score +
-    0.06 * platoon.score +
-    0.04 * fb +
-    0.04 * isoU +
-    0.07 * pitchHr +
-    0.02 * fly +
-    0.07 * park +
-    0.03 * pull +
-    0.03 * ha.score +
-    0.02 * weather +
-    0.02 * xwoba +
+    0.13 * power +
+    0.06 * bayes.form +
+    0.12 * barrel +
+    0.04 * hard +
+    0.05 * launch.score +
+    0.04 * xslg +
+    0.04 * xIsoU +
+    0.07 * mix.score +
+    0.05 * platoon.score +
+    0.05 * air.score +
+    0.03 * isoU +
+    0.09 * env.score +
+    0.02 * heatU +
+    0.08 * park +
+    0.04 * vsHr.score +
+    0.02 * ha.score +
+    0.03 * weather +
+    0.02 * wrc +
     0.02 * due +
-    0.1 * ace.score;
+    0.04 * ace.score +
+    0.04 * nightFit.score +
+    0.02 * clock.score +
+    0.02 * velo.score +
+    0.02 * porch +
+    0.02 * shape;
 
   let score = Math.round(clamp(raw * 100 * (loudMix && flags.includes("cold") ? 1 : formBoost), 8, 97));
-  if (drought) score = Math.round(clamp(score * 0.78, 8, 64));
-  else if (coldTen && hrPa >= 0.04 && !loudMix) score = Math.round(clamp(score * 0.88, 8, 74));
+  if (drought) score = Math.round(clamp(score * 0.96, 8, 94));
+
+  const paExp = expectedPaOf(ctx.lineupSlot);
+  const isoRate = isoHrPa(iso);
+  const mixedRate =
+    vsHr.rate != null ? 0.55 * bayes.rate + 0.25 * vsHr.rate + 0.2 * isoRate : 0.72 * bayes.rate + 0.28 * isoRate;
+  const mixTilt = mix.coverage > 0 ? 0.85 + 0.15 * clamp(mix.hrMult, 0.7, 1.3) : 1;
 
   let impliedHr = clamp(
-    hrPa *
-      (4.15 + slot) *
-      (0.82 + 0.35 * park) *
-      (0.85 + 0.3 * pitchHr) *
+    mixedRate *
+      paExp *
+      (0.82 + 0.36 * park) *
+      (0.78 + 0.44 * env.score) *
       (0.9 + 0.2 * weather) *
-      (0.85 + 0.3 * barrel) *
-      mix.hrMult *
-      (0.92 + 0.16 * platoon.score) *
-      (0.94 + 0.12 * fb) *
-      (drought ? 0.82 : 0.96 + 0.08 * due) *
-      (0.88 + 0.22 * ace.score) *
+      (0.82 + 0.36 * shape) *
+      (0.88 + 0.24 * platoon.score) *
+      velo.mult *
+      mixTilt *
+      nightFit.mult *
+      clock.mult *
+      (drought ? 0.95 : 1) *
+      (0.94 + 0.12 * ace.score) *
       (loudMix && flags.includes("cold") ? 1 : formBoost),
-    0.04,
-    0.72,
+    0.03,
+    0.55,
   );
-  if (recentHrPa != null) {
-    const rec = clamp(recentHrPa * (4.15 + slot) * (0.82 + 0.35 * park) * (0.85 + 0.3 * pitchHr) * mix.hrMult, 0.02, 0.55);
-    impliedHr = 0.45 * impliedHr + 0.55 * rec;
+  if (isAcePitcher(ctx.pitcher?.k9, ctx.pitcher?.xera) && !isOpener(ctx.pitcher) && !ctx.reverse) {
+    impliedHr *= 0.9;
   }
-  if (drought) impliedHr *= 0.5;
-  if (flags.includes("cold")) impliedHr *= 0.82;
-  if (isAcePitcher(ctx.pitcher?.k9, ctx.pitcher?.xera) && !isOpener(ctx.pitcher) && !ctx.reverse) impliedHr *= 0.7;
-  if (isShortStart(ctx.pitcher)) impliedHr *= 1.1;
-  impliedHr = clamp(impliedHr * 0.62, 0.03, 0.45);
+  if (isShortStart(ctx.pitcher)) impliedHr *= 1.04;
+  impliedHr *= 0.88;
+  impliedHr = clamp(impliedHr, 0.03, 0.48);
 
   const hrPct = 1 - Math.exp(-impliedHr);
 
   const reasons = pickReasons(factors, [
-    drought ? formDetail : `${season.hr} HR in ${season.pa} PA`,
+    drought ? bayes.detail : `${season.hr} HR in ${season.pa} PA`,
     ctx.pitcher ? `vs ${ctx.pitcher.name.split(" ").slice(-1)[0]} ${hr9.toFixed(2)} HR/9` : "No probable listed",
-    `${ctx.parkHr} park HR factor`,
+    `${parkAdj} park HR factor${handBit ? ` ${handBit}` : ""}`,
   ]);
 
   return { score, impliedHr, hrPct, factors, reasons, matchup: mix.matchup, mix };
@@ -616,7 +872,75 @@ export function scoreSb(season: BatterSeason, ctx: MatchupCtx) {
   return { score, factors, reasons: pickReasons(factors, [`${season.sb} stolen bases`]) };
 }
 
+export function kRateOf(pitcher: PitcherCard): { k9: number; kPct: number; detail: string } {
+  const bf = pitcher.bf > 0 ? pitcher.bf : pitcher.ip * 4.25;
+  const seasonPct = pitcher.k / Math.max(bf, 1);
+  const recPct =
+    pitcher.recentBf != null && pitcher.recentBf >= 40 && pitcher.recentK != null
+      ? pitcher.recentK / pitcher.recentBf
+      : null;
+  const k9 = pitcher.recentK9 != null ? 0.58 * pitcher.k9 + 0.42 * pitcher.recentK9 : pitcher.k9;
+  const raw = recPct != null ? 0.6 * seasonPct + 0.4 * recPct : seasonPct || k9 / 38.5;
+  const kPct = clamp(raw, 0.11, 0.4);
+  const detail =
+    recPct != null
+      ? `${(kPct * 100).toFixed(1)}% K/BF · last ${(recPct * 100).toFixed(1)}%`
+      : `${(kPct * 100).toFixed(1)}% K/BF`;
+  return { k9, kPct, detail };
+}
+
+/** Honest outing length. A 4.9 IP/GS starter is not a 6-inning K factory. */
+export function expectedIpOf(pitcher: PitcherCard): number {
+  if (isOpener(pitcher)) {
+    const r = pitcher.recentIp ?? pitcher.ip / Math.max(pitcher.gamesStarted || pitcher.gamesPlayed || 1, 1);
+    return clamp(r || 2.4, 1.6, 3.4);
+  }
+  const gs = Math.max(pitcher.gamesStarted, 1);
+  const seasonIp = pitcher.ip > 0 ? pitcher.ip / gs : 5.1;
+  const recent = pitcher.recentIp && pitcher.recentIp > 0 ? pitcher.recentIp : seasonIp;
+  let ip = 0.62 * seasonIp + 0.38 * recent;
+  if (seasonIp < 5.0) ip = Math.min(ip, 5.12);
+  else if (seasonIp < 5.35 && recent < 5.55) ip = Math.min(ip, 5.42);
+  if (isShortStart(pitcher)) ip = Math.min(ip, 5.05);
+  return clamp(ip, 4.3, 6.25);
+}
+
+export function arsenalWhiff(arsenal: PitchTypeRow[] | null | undefined): { score: number; detail: string; mult: number } {
+  const rows = (arsenal ?? []).filter((p) => p.whiff != null && p.whiff > 0 && p.usage >= 5);
+  if (!rows.length) return { score: 0.5, detail: "—", mult: 1 };
+  const w = rows.reduce((s, p) => s + (p.whiff ?? 0) * p.usage, 0);
+  const u = rows.reduce((s, p) => s + p.usage, 0) || 1;
+  const whiff = w / u;
+  return {
+    score: unit(whiff, 16, 36),
+    detail: `${whiff.toFixed(1)}% mix whiff`,
+    mult: clamp(0.9 + (whiff - 24) / 85, 0.9, 1.12),
+  };
+}
+
+export function expectedKOf(
+  pitcher: PitcherCard,
+  oppKRate: number,
+  parkK = 100,
+): { mean: number; ip: number; kPct: number; k9: number } {
+  const rates = kRateOf(pitcher);
+  const ip = expectedIpOf(pitcher);
+  const bfIp = clamp(3.72 + (pitcher.whip || 1.25) * 0.42, 3.9, 4.55);
+  const bf = ip * bfIp;
+  const park = parkK / 100;
+  const opp = clamp(0.86 + oppKRate * 0.62, 0.88, 1.14);
+  const mix = arsenalWhiff(pitcher.arsenal);
+  const fromPct = rates.kPct * bf;
+  const fromK9 = (rates.k9 * ip) / 9;
+  let mean = (0.58 * fromPct + 0.42 * fromK9) * park * opp * mix.mult;
+  if (isShortStart(pitcher) && !isOpener(pitcher)) mean *= 0.92;
+  if (isOpener(pitcher)) mean *= 0.55;
+  mean = clamp(mean, 2.2, 8.4);
+  return { mean, ip, kPct: rates.kPct, k9: rates.k9 };
+}
+
 export function scoreStrikeouts(pitcher: PitcherCard, oppKRate: number, parkK = 100) {
+  const exp = expectedKOf(pitcher, oppKRate, parkK);
   if (isOpener(pitcher)) {
     const factors: Factor[] = [
       { key: "open", label: "Opener", score: 0.18, detail: `${pitcher.recentIp != null ? `${pitcher.recentIp.toFixed(1)} IP/app` : `${pitcher.gamesStarted} GS`} — short outing` },
@@ -626,24 +950,34 @@ export function scoreStrikeouts(pitcher: PitcherCard, oppKRate: number, parkK = 
       score: 42,
       factors,
       reasons: ["Opener / short outing — K overs skip"],
+      impliedK: exp.mean,
+      kRate: exp.kPct,
     };
   }
-  const k9 = unit(pitcher.k9, 7.2, 12.6);
+  const rates = kRateOf(pitcher);
+  const k9 = unit(rates.k9, 7.2, 12.6);
+  const kPctU = unit(rates.kPct, 0.17, 0.34);
   const recentU = pitcher.recentK9 == null ? k9 : unit(pitcher.recentK9, 6.8, 13.2);
   const whip = unit(1.45 - pitcher.whip, 0.2, 0.85);
   const opp = unit(oppKRate, 0.18, 0.28);
   const workload = unit(pitcher.gamesStarted, 8, 28);
   const xeraU = pitcher.xera == null ? 0.5 : unit(5.2 - pitcher.xera, 0.4, 2.8);
   const primary = primaryOf(pitcher.arsenal);
-  const whiff = primary?.whiff != null ? unit(primary.whiff, 14, 38) : 0.5;
+  const mix = arsenalWhiff(pitcher.arsenal);
+  const whiff = primary?.whiff != null ? unit(primary.whiff, 14, 38) : mix.score;
   const park = unit(parkK, 90, 112);
   const vsL = pitcher.vsL?.k9 ?? null;
   const vsR = pitcher.vsR?.k9 ?? null;
   const splitK = vsL != null && vsR != null ? 0.42 * unit(vsL, 6.5, 12.5) + 0.58 * unit(vsR, 6.5, 12.5) : 0.5;
+  const ipU = unit(exp.ip, 4.4, 6.2);
+  const expU = unit(exp.mean, 3.6, 7.4);
   const factors: Factor[] = [
-    { key: "k9", label: "K/9", score: k9, detail: pitcher.k9.toFixed(2) },
+    { key: "krate", label: "K/BF", score: kPctU, detail: rates.detail },
+    { key: "k9", label: "K/9", score: k9, detail: `${rates.k9.toFixed(2)} blended` },
+    { key: "expected", label: "Expected Ks", score: expU, detail: `${exp.mean.toFixed(1)} K in ${exp.ip.toFixed(1)} IP` },
+    { key: "ip", label: "Outing", score: ipU, detail: `${exp.ip.toFixed(1)} expected IP` },
     { key: "recent", label: "Last 10 K/9", score: recentU, detail: pitcher.recentK9 != null ? pitcher.recentK9.toFixed(2) : "Season" },
-    { key: "whiff", label: "Primary whiff", score: whiff, detail: primary?.whiff != null ? `${primary.code} ${primary.whiff.toFixed(1)}%` : "—" },
+    { key: "whiff", label: "Mix whiff", score: mix.score, detail: mix.detail !== "—" ? mix.detail : primary?.whiff != null ? `${primary.code} ${primary.whiff.toFixed(1)}%` : "—" },
     { key: "xera", label: "xERA", score: xeraU, detail: pitcher.xera != null ? pitcher.xera.toFixed(2) : "—" },
     { key: "park", label: "Park K", score: park, detail: `${parkK} K factor` },
     { key: "opp", label: "Opp K rate", score: opp, detail: `${(oppKRate * 100).toFixed(1)}%` },
@@ -653,7 +987,20 @@ export function scoreStrikeouts(pitcher: PitcherCard, oppKRate: number, parkK = 
   ];
   const score = Math.round(
     clamp(
-      (0.22 * k9 + 0.16 * recentU + 0.14 * whiff + 0.1 * xeraU + 0.08 * park + 0.14 * opp + 0.08 * splitK + 0.05 * whip + 0.03 * workload) * 100,
+      (0.18 * kPctU +
+        0.14 * k9 +
+        0.16 * expU +
+        0.08 * ipU +
+        0.1 * recentU +
+        0.12 * mix.score +
+        0.06 * xeraU +
+        0.06 * park +
+        0.12 * opp +
+        0.06 * splitK +
+        0.04 * whip +
+        0.02 * workload +
+        0.04 * whiff) *
+        100,
       10,
       96,
     ),
@@ -661,7 +1008,9 @@ export function scoreStrikeouts(pitcher: PitcherCard, oppKRate: number, parkK = 
   return {
     score,
     factors,
-    reasons: pickReasons(factors, [`${pitcher.k9.toFixed(1)} K/9`, `${pitcher.k} K on the year`]),
+    reasons: pickReasons(factors, [`${rates.k9.toFixed(1)} K/9`, `${exp.mean.toFixed(1)} expected Ks tonight`]),
+    impliedK: exp.mean,
+    kRate: rates.kPct,
   };
 }
 

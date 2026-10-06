@@ -134,7 +134,7 @@ async function fetchPrizePicks(date: string): Promise<PpProjection[]> {
 
 function preferredLine(market: PropMarket): number {
   if (market === "tb" || market === "hrrbi") return 1.5;
-  if (market === "k") return 6.5;
+  if (market === "k") return 5.5;
   if (market === "runs") return 0.5;
   if (market === "rbi") return 0.5;
   if (market === "fs") return 5.5;

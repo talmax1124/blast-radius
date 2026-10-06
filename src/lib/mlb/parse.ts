@@ -71,6 +71,37 @@ export function teamLogoUrl(teamId: number): string {
   return `https://www.mlbstatic.com/team-logos/${teamId}.svg`;
 }
 
+export function hourEt(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const raw = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    hourCycle: "h23",
+  }).format(d);
+  const h = Number.parseInt(raw, 10);
+  if (!Number.isFinite(h)) return null;
+  return ((h % 24) + 24) % 24;
+}
+
+export function formatHourEt(hour: number | null | undefined): string {
+  if (hour == null || !Number.isFinite(hour)) return "—";
+  const h = ((Math.round(hour) % 24) + 24) % 24;
+  if (h === 0) return "12am ET";
+  if (h === 12) return "12pm ET";
+  if (h < 12) return `${h}am ET`;
+  return `${h - 12}pm ET`;
+}
+
+export function formatShortDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  const dt = new Date(Date.UTC(y, m - 1, d, 12));
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(dt);
+}
+
 export function formatGameTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";

@@ -4,7 +4,7 @@ import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { AppProviders } from "@/components/providers";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "Blast Radius";
+const APP_NAME = "MLB GREAT RUN";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -15,9 +15,9 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "MLB home run and prop desk. RotoWire lineups, PrizePicks slips, Statcast, and ranked picks.",
+          "MLB home-run desk. Daily Great Run board, PrizePicks 2/3/6, Statcast barrels, and graded slips.",
       },
-      { name: "theme-color", content: "#0a0c0b" },
+      { name: "theme-color", content: "#070807" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },

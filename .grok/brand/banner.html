@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    @font-face {
+      font-family: "Newsreader";
+      src: url("Newsreader.ttf") format("truetype");
+      font-weight: 400 800;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "Newsreader";
+      src: url("Newsreader-Italic.ttf") format("truetype");
+      font-weight: 400 800;
+      font-style: italic;
+    }
+    @font-face {
+      font-family: "IBM Plex Sans";
+      src: url("IBMPlexSans-Medium.ttf") format("truetype");
+      font-weight: 500;
+      font-style: normal;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 1200px;
+      height: 264px;
+      overflow: hidden;
+      background: #efece4;
+    }
+    .card {
+      position: relative;
+      width: 1200px;
+      height: 264px;
+      color: #0c0e0c;
+      background: #efece4;
+    }
+    .paper {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(239, 236, 228, 0.55) 0%, rgba(239, 236, 228, 0.38) 55%, rgba(239, 236, 228, 0.18) 100%),
+        url("paper-banner.jpg") center / cover no-repeat;
+    }
+    .inner {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      padding: 36px 0 0 56px;
+    }
+    .lockup {
+      width: 540px;
+    }
+    .kicker {
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #7d9a86;
+      margin-bottom: 8px;
+    }
+    .rule-top {
+      width: 480px;
+      height: 1px;
+      background: #0c0e0c;
+      opacity: 0.58;
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-family: "Newsreader", serif;
+      font-optical-sizing: auto;
+      font-weight: 700;
+      font-size: 52px;
+      letter-spacing: -0.035em;
+      line-height: 0.9;
+      color: #0c0e0c;
+    }
+    .brick {
+      width: 480px;
+      height: 3px;
+      background: #c45c4a;
+      margin-top: 10px;
+    }
+    .deck {
+      font-family: "Newsreader", serif;
+      font-style: italic;
+      font-weight: 500;
+      font-size: 16px;
+      color: #0c0e0c;
+      opacity: 0.7;
+      margin-top: 8px;
+      max-width: 520px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="paper"></div>
+    <div class="inner">
+      <div class="lockup">
+        <p class="kicker">MLB prop desk</p>
+        <div class="rule-top"></div>
+        <h1>MLB GREAT RUN</h1>
+        <div class="brick"></div>
+        <p class="deck">Daily 2/3/6 slips graded from the boxes.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "crons": [
+    { "path": "/api/desk/tick", "schedule": "20 15 * * *" },
+    { "path": "/api/desk/tick", "schedule": "20 17 * * *" },
+    { "path": "/api/desk/tick", "schedule": "20 19 * * *" },
+    { "path": "/api/desk/tick", "schedule": "20 23 * * *" },
+    { "path": "/api/desk/tick", "schedule": "20 3 * * *" }
+  ]
+}
