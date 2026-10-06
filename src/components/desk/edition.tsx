@@ -15,39 +15,36 @@ export function Folio({ copy }: { copy: EditionCopy }) {
   );
 }
 
-export function Nameplate({ sport = "mlb" }: { sport?: "mlb" | "nfl" | "nhl" | "board" }) {
-  const kicker =
-    sport === "nfl" ? "Goal line desk" : sport === "nhl" ? "Shot desk" : sport === "board" ? "Daily board" : "Home run desk";
-  const league = sport === "nfl" ? "NFL" : sport === "nhl" ? "NHL" : sport === "board" ? "ALL" : "MLB";
-  const link = (id: "mlb" | "nfl" | "nhl" | "board", href: string, label: string) => (
-    <a href={href} className={sport === id ? "text-fg" : "text-faint hover:text-fg"}>
-      {label}
-    </a>
-  );
+export function Nameplate({
+  sport = "mlb",
+}: {
+  sport?: "mlb" | "nfl" | "nhl" | "board" | "research";
+}) {
+  const sections = [
+    { id: "board", href: "/board", label: "Overview" },
+    { id: "mlb", href: "/", label: "Baseball" },
+    { id: "nfl", href: "/nfl", label: "Football" },
+    { id: "nhl", href: "/nhl", label: "Hockey" },
+    { id: "research", href: "/research", label: "Research" },
+  ];
   return (
-    <div className="nameplate py-5 text-center sm:py-6">
-      <p className="kicker">{kicker}</p>
-      <h1 className="font-display mt-1 font-semibold tracking-tight">
-        <span
-          className={
-            sport === "board"
-              ? "block text-xs font-medium tracking-[0.28em] text-stone"
-              : "block text-[0.32em] font-medium tracking-[0.42em] text-stone"
-          }
-        >
-          {league}
+    <div className="desk-masthead">
+      <a href="/board" className="desk-brand" aria-label="Great Run overview">
+        <span className="desk-brand-mark" aria-hidden="true">
+          gr.
         </span>
-        <span className={sport === "board" ? "text-5xl sm:text-6xl" : "text-display"}>GREAT RUN</span>
-      </h1>
-      <p className="kicker mt-3 flex flex-wrap items-center justify-center gap-3">
-        {link("board", "/board", "Board")}
-        <span className="text-faint">/</span>
-        {link("mlb", "/", "MLB")}
-        <span className="text-faint">/</span>
-        {link("nfl", "/nfl", "NFL")}
-        <span className="text-faint">/</span>
-        {link("nhl", "/nhl", "NHL")}
-      </p>
+        <span>
+          <strong>Great Run</strong>
+          <small>Sports intelligence</small>
+        </span>
+      </a>
+      <nav className="desk-navigation" aria-label="Sports and research">
+        {sections.map((item) => (
+          <a key={item.id} href={item.href} aria-current={sport === item.id ? "page" : undefined}>
+            {item.label}
+          </a>
+        ))}
+      </nav>
     </div>
   );
 }
@@ -71,13 +68,7 @@ export function SectionFlag({ children }: { children: string }) {
   );
 }
 
-export function RecapSpread({
-  copy,
-  entry,
-}: {
-  copy: EditionCopy;
-  entry: DeskLogEntry | null;
-}) {
+export function RecapSpread({ copy, entry }: { copy: EditionCopy; entry: DeskLogEntry | null }) {
   return (
     <div className="grid overflow-hidden border border-border lg:grid-cols-[minmax(0,1.45fr)_minmax(16rem,0.9fr)]">
       <article className="bg-paper px-5 py-6 text-ink sm:px-7 sm:py-7">
@@ -152,7 +143,11 @@ function AgateSlip({ slip }: { slip: SlipCard }) {
             key={`${slip.size}-${leg.playerId}-${leg.market}-${i}`}
             className={cn(
               "agate grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-0.5",
-              leg.result === "miss" ? "text-brick" : leg.result === "hit" ? "text-fg" : "text-muted",
+              leg.result === "miss"
+                ? "text-brick"
+                : leg.result === "hit"
+                  ? "text-fg"
+                  : "text-muted",
             )}
           >
             <span className="truncate">

@@ -1,3 +1,4 @@
+import { loadPublishedBoards } from "@/lib/research/functions";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, Radar } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -52,7 +53,10 @@ export function NhlDesk() {
     const saved = loadSaved();
     if (saved) setBoard(saved);
     setBooted(true);
-    if (!saved) run.mutate();
+    void loadPublishedBoards().then((published) => {
+      if (published.nhl) setBoard(published.nhl);
+      else if (!saved || saved.date !== published.date) run.mutate();
+    }).catch(() => { if (!saved) run.mutate(); });
     // First visit posts the board. A saved card stays until Fetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

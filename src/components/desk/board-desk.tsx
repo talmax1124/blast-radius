@@ -1,3 +1,4 @@
+import { loadPublishedBoards } from "@/lib/research/functions";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, Radar } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -152,10 +153,20 @@ export function BoardDesk() {
     if (savedMlb?.result?.slips) setMlb({ date: savedMlb.date, slips: savedMlb.result.slips });
     setLedger(loadJson<LedgerLeg[]>(LEDGER_KEY) ?? []);
     setBooted(true);
-    if (!savedNhl) nhlRun.mutate();
-    if (!savedNfl) nflRun.mutate();
-    tennisRun.mutate();
-    slateRun.mutate();
+    void loadPublishedBoards().then((published) => {
+      if (published.nhl) setNhl(published.nhl);
+      else if (!savedNhl || savedNhl.date !== published.date) nhlRun.mutate();
+      if (published.nfl) setNfl(published.nfl);
+      else if (!savedNfl || savedNfl.date !== published.date) nflRun.mutate();
+      if (published.mlb) setMlb({ date: published.date, slips: published.mlb.slips });
+      if (published.board) { setSlate(published.board.slate); setTennis(published.board.tennis); }
+      else { tennisRun.mutate(); slateRun.mutate(); }
+    }).catch(() => {
+      if (!savedNhl) nhlRun.mutate();
+      if (!savedNfl) nflRun.mutate();
+      tennisRun.mutate();
+      slateRun.mutate();
+    });
     // Cached NHL and NFL stay until Fetch. Tennis and the new slates refresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -9,7 +9,7 @@ import { loadBooksBoard } from "./books.server";
 import { attachBooks, countLeaks } from "./odds";
 import { snapshotOdds } from "./tape.server";
 
-let inflight: Promise<DeskTick> | null = null;
+const inflight = new Map<string, Promise<DeskTick>>();
 
 function cardLocked(day: LedgerDay | undefined, games: GameCard[]): boolean {
   const posted = (day?.slips ?? []).filter((s) => !s.skip && s.legs.length > 0);
@@ -76,7 +76,7 @@ async function tickOnce(date: string): Promise<DeskTick> {
   try {
     slateGames = (await fetchSlate(date)).games;
   } catch {
-    slateGames = [];
+    return pack(date, "error", "The slate source is unavailable. This is not a confirmed off day.", ledger, analysisOf(day));
   }
 
   if (!slateGames.length) {
@@ -191,9 +191,9 @@ async function tickOnce(date: string): Promise<DeskTick> {
 }
 
 export async function runDeskTick(date = todayEt()): Promise<DeskTick> {
-  if (inflight) return inflight;
-  inflight = tickOnce(date).finally(() => {
-    inflight = null;
-  });
-  return inflight;
+  const existing = inflight.get(date);
+  if (existing) return existing;
+  const pending = tickOnce(date).finally(() => inflight.delete(date));
+  inflight.set(date, pending);
+  return pending;
 }

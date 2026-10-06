@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BoardRouteImport } from './routes/board'
 import { Route as NflRouteImport } from './routes/nfl'
 import { Route as NhlRouteImport } from './routes/nhl'
+import { Route as ResearchRouteImport } from './routes/research'
+import { Route as ApiDeskDailyRouteImport } from './routes/api/desk.daily'
 import { Route as ApiDeskTickRouteImport } from './routes/api/desk.tick'
 
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +37,16 @@ const NhlRoute = NhlRouteImport.update({
   path: '/nhl',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResearchRoute = ResearchRouteImport.update({
+  id: '/research',
+  path: '/research',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDeskDailyRoute = ApiDeskDailyRouteImport.update({
+  id: '/api/desk/daily',
+  path: '/api/desk/daily',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDeskTickRoute = ApiDeskTickRouteImport.update({
   id: '/api/desk/tick',
   path: '/api/desk/tick',
@@ -46,6 +58,8 @@ export interface FileRoutesByFullPath {
   '/board': typeof BoardRoute
   '/nfl': typeof NflRoute
   '/nhl': typeof NhlRoute
+  '/research': typeof ResearchRoute
+  '/api/desk/daily': typeof ApiDeskDailyRoute
   '/api/desk/tick': typeof ApiDeskTickRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +67,8 @@ export interface FileRoutesByTo {
   '/board': typeof BoardRoute
   '/nfl': typeof NflRoute
   '/nhl': typeof NhlRoute
+  '/research': typeof ResearchRoute
+  '/api/desk/daily': typeof ApiDeskDailyRoute
   '/api/desk/tick': typeof ApiDeskTickRoute
 }
 export interface FileRoutesById {
@@ -61,14 +77,38 @@ export interface FileRoutesById {
   '/board': typeof BoardRoute
   '/nfl': typeof NflRoute
   '/nhl': typeof NhlRoute
+  '/research': typeof ResearchRoute
+  '/api/desk/daily': typeof ApiDeskDailyRoute
   '/api/desk/tick': typeof ApiDeskTickRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/board' | '/nfl' | '/nhl' | '/api/desk/tick'
+  fullPaths:
+    | '/'
+    | '/board'
+    | '/nfl'
+    | '/nhl'
+    | '/research'
+    | '/api/desk/daily'
+    | '/api/desk/tick'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/board' | '/nfl' | '/nhl' | '/api/desk/tick'
-  id: '__root__' | '/' | '/board' | '/nfl' | '/nhl' | '/api/desk/tick'
+  to:
+    | '/'
+    | '/board'
+    | '/nfl'
+    | '/nhl'
+    | '/research'
+    | '/api/desk/daily'
+    | '/api/desk/tick'
+  id:
+    | '__root__'
+    | '/'
+    | '/board'
+    | '/nfl'
+    | '/nhl'
+    | '/research'
+    | '/api/desk/daily'
+    | '/api/desk/tick'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,6 +116,8 @@ export interface RootRouteChildren {
   BoardRoute: typeof BoardRoute
   NflRoute: typeof NflRoute
   NhlRoute: typeof NhlRoute
+  ResearchRoute: typeof ResearchRoute
+  ApiDeskDailyRoute: typeof ApiDeskDailyRoute
   ApiDeskTickRoute: typeof ApiDeskTickRoute
 }
 
@@ -109,6 +151,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NhlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/research': {
+      id: '/research'
+      path: '/research'
+      fullPath: '/research'
+      preLoaderRoute: typeof ResearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/desk/daily': {
+      id: '/api/desk/daily'
+      path: '/api/desk/daily'
+      fullPath: '/api/desk/daily'
+      preLoaderRoute: typeof ApiDeskDailyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/desk/tick': {
       id: '/api/desk/tick'
       path: '/api/desk/tick'
@@ -124,6 +180,8 @@ const rootRouteChildren: RootRouteChildren = {
   BoardRoute: BoardRoute,
   NflRoute: NflRoute,
   NhlRoute: NhlRoute,
+  ResearchRoute: ResearchRoute,
+  ApiDeskDailyRoute: ApiDeskDailyRoute,
   ApiDeskTickRoute: ApiDeskTickRoute,
 }
 export const routeTree = rootRouteImport

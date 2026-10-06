@@ -1,9 +1,32 @@
 {
   "crons": [
-    { "path": "/api/desk/tick", "schedule": "20 15 * * *" },
-    { "path": "/api/desk/tick", "schedule": "20 17 * * *" },
-    { "path": "/api/desk/tick", "schedule": "20 19 * * *" },
-    { "path": "/api/desk/tick", "schedule": "20 23 * * *" },
-    { "path": "/api/desk/tick", "schedule": "20 3 * * *" }
+    {
+      "path": "/api/desk/daily",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/desk/daily",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/desk/tick",
+      "schedule": "20 15 * * *"
+    },
+    {
+      "path": "/api/desk/tick",
+      "schedule": "20 17 * * *"
+    },
+    {
+      "path": "/api/desk/tick",
+      "schedule": "20 19 * * *"
+    },
+    {
+      "path": "/api/desk/tick",
+      "schedule": "20 23 * * *"
+    },
+    {
+      "path": "/api/desk/tick",
+      "schedule": "20 3 * * *"
+    }
   ]
 }
