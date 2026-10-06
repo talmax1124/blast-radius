@@ -86,7 +86,7 @@ function narrate(report: {
   buckets: Bucket[];
 }): string[] {
   if (report.n === 0) {
-    return ["No graded legs yet. Mark a result when the game ends. The desk will not invent one."];
+    return ["No source-graded results yet. Results appear when final game data is available; no manual marking is needed."];
   }
   const gap = report.hits - report.expected;
   const lines = [

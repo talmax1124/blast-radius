@@ -27,7 +27,8 @@ import { ICE } from "@/lib/nhl/score";
 import type { NhlBoard } from "@/lib/nhl/types";
 import { cn } from "@/lib/utils";
 
-const LEDGER_KEY = "great-run:board-ledger-1";
+// Keep the legacy mixed/manual ledger untouched, but never reuse accidental grades.
+const LEDGER_KEY = "great-run:board-auto-ledger-2";
 const NHL_KEY = "great-run:nhl-board-2";
 const NFL_KEY = "great-run:nfl-board-1";
 const MLB_KEY = "great-run:last-analysis-32";
@@ -157,12 +158,13 @@ export function BoardDesk() {
   }, []);
 
   useEffect(() => {
+    if (!booted) return;
     try {
       localStorage.setItem(LEDGER_KEY, JSON.stringify(ledger.slice(0, 400)));
     } catch {
       /* ignore */
     }
-  }, [ledger]);
+  }, [ledger, booted]);
 
   const date = slate?.date || nhl?.date || nfl?.date || mlb?.date || "";
 
@@ -269,10 +271,6 @@ export function BoardDesk() {
     if (games == null) return "…";
     if (id === "mlb" && mlb) return `${games} · card`;
     return String(games);
-  }
-
-  function mark(leg: BoardLeg, result: "hit" | "miss") {
-    setLedger((prev) => [toLedger(leg, result), ...prev.filter((row) => row.id !== leg.id)]);
   }
 
   function refresh() {
@@ -390,13 +388,16 @@ export function BoardDesk() {
               <p className="font-serif mt-2 text-base text-ink/70 italic">{pct(slip.sweep)} to sweep. One player per game.</p>
               <ul className="mt-4 flex flex-col">
                 {slip.legs.map((leg) => (
-                  <SlipRow key={leg.id} leg={leg} onMark={mark} />
+                  <SlipRow key={leg.id} leg={leg} />
                 ))}
               </ul>
             </>
           ) : (
             <p className="font-serif mt-4 text-base text-ink/70 italic">{emptyCopy}</p>
           )}
+          <p className="mt-4 text-xs leading-relaxed text-ink/60">
+            Results update from game data. Manual grading is disabled; previous manual marks no longer affect this board.
+          </p>
           {waiting.length > 0 ? (
             <p className="mt-4 text-xs leading-relaxed text-ink/45">
               Waiting on a price: {waiting.map((game) => `${game.sport.toUpperCase()} ${game.label}`).join(", ")}.
@@ -600,7 +601,7 @@ export function BoardDesk() {
                   {leg.sport.toUpperCase()} · {leg.prop}
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-faint">{leg.note}</p>
-                <GradeButtons leg={leg} onMark={mark} />
+                <GradeStatus leg={leg} />
               </li>
             ))}
           </ul>
@@ -676,7 +677,7 @@ function Filter({ active, children, onClick }: { active: boolean; children: stri
   );
 }
 
-function SlipRow({ leg, onMark }: { leg: BoardLeg; onMark: (leg: BoardLeg, result: "hit" | "miss") => void }) {
+function SlipRow({ leg }: { leg: BoardLeg }) {
   return (
     <li className="border-t border-ink/10 py-3">
       <div className="flex items-baseline justify-between gap-3">
@@ -687,40 +688,16 @@ function SlipRow({ leg, onMark }: { leg: BoardLeg; onMark: (leg: BoardLeg, resul
         {leg.sport.toUpperCase()} · {leg.team} · {leg.prop}
       </p>
       <p className="mt-1 text-xs leading-relaxed text-ink/45">{leg.note}</p>
-      <GradeButtons leg={leg} onMark={onMark} ink />
+      <GradeStatus leg={leg} ink />
     </li>
   );
 }
 
-function GradeButtons({
-  leg,
-  onMark,
-  ink = false,
-}: {
-  leg: BoardLeg;
-  onMark: (leg: BoardLeg, result: "hit" | "miss") => void;
-  ink?: boolean;
-}) {
-  const settled = leg.settled;
+function GradeStatus({ leg, ink = false }: { leg: BoardLeg; ink?: boolean }) {
+  if (!leg.settled) return null;
   return (
-    <div className="mt-2 flex gap-2">
-      <button
-        type="button"
-        onClick={() => onMark(leg, "hit")}
-        className={cn("h-9 px-3 text-xs", settled === "hit" ? "bg-pine text-ink" : ink ? "text-ink/50" : "text-muted hover:text-fg")}
-      >
-        Hit
-      </button>
-      <button
-        type="button"
-        onClick={() => onMark(leg, "miss")}
-        className={cn(
-          "h-9 px-3 text-xs",
-          settled === "miss" ? "bg-brick text-paper" : ink ? "text-ink/50" : "text-muted hover:text-fg",
-        )}
-      >
-        Miss
-      </button>
-    </div>
+    <p className={cn("mt-2 text-xs", ink ? "text-ink/60" : "text-muted")}>
+      Source result: {leg.settled === "hit" ? "Won" : "Lost"}
+    </p>
   );
 }

@@ -58,3 +58,8 @@ An expanding-window diagnostic uses only prior Eastern dates, requires five trai
 The simulation is a pregame empirical scenario tool. Live score, news, injuries, opponent strength, and weather do not automatically change its distribution. It does not yet simulate cross-player slips or full games, settle pushes by sportsbook rules, estimate payouts, or feed probabilities into the daily publishing pipeline. Existing daily models and text synthesis remain separate; this work must not be described as a trained, calibrated joint betting model.
 
 Method references: [NIST Wilson intervals](https://www.itl.nist.gov/div898/handbook/prc/section2/prc241.htm) and [scikit-learn probability evaluation](https://scikit-learn.org/stable/modules/calibration.html).
+
+
+## Manual grading removed
+
+The board no longer exposes Hit/Miss actions. Source results are read-only. The old browser ledger mixed manual marks with automatic results and recorded no provenance, so it is preserved but excluded from both recommendation filtering and performance adjustments. A separate automatic-results ledger starts from source-reported outcomes; old mixed history is not migrated. This also prevents initial rendering from overwriting saved results before storage has loaded.
