@@ -14,9 +14,11 @@ export async function feed(url: string, ttl = 60_000): Promise<FeedObject> {
     return { ...body, retrievedAt: new Date().toISOString() };
   })();
   if (cache.size >= 200) cache.delete(cache.keys().next().value!);
-  cache.set(url, { expires: Date.now() + ttl, promise });
+  cache.set(url, { expires: Infinity, promise });
   try {
-    return await promise;
+    const result = await promise;
+    if (cache.get(url)?.promise === promise) cache.set(url, { expires: Date.now() + ttl, promise });
+    return result;
   } catch (error) {
     if (cache.get(url)?.promise === promise) cache.delete(url);
     throw error;

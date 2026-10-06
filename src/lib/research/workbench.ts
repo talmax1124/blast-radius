@@ -1,3 +1,4 @@
+import { normalizeLive, normalizeVenue, type LiveData, type VenueMap } from "./live.ts";
 // The provider boundary accepts variable schemas; only these normalized fields reach the client.
 export type ResearchSport = "mlb" | "nfl" | "nba" | "nhl";
 export const SPORT_PATHS: Record<ResearchSport, string> = {
@@ -28,6 +29,8 @@ export type ResearchPlayer = {
   stats: Stat[];
 };
 export type GameResearch = {
+  live: LiveData;
+  venueMap: VenueMap;
   game: ResearchGame;
   fetchedAt: string;
   source: string;
@@ -188,6 +191,8 @@ export function normalizeSummary(raw: FeedObject, sport: ResearchSport): GameRes
   const weather = raw.gameInfo?.weather;
   return {
     game,
+    live: normalizeLive(raw, sport),
+    venueMap: normalizeVenue(raw),
     fetchedAt: str(raw.retrievedAt) || new Date().toISOString(),
     source: `https://www.espn.com/${sport}/game/_/gameId/${game.id}`,
     players: [...players.values()].sort(

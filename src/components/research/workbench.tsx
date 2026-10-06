@@ -1,3 +1,6 @@
+import { Freshness, LiveGame, VenueView } from "./live-game";
+import { SimulationLab } from "./simulation-lab";
+import { LIVE_POLL_MS, pollInterval } from "@/lib/research/live";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight, Bookmark, ChevronLeft, ChevronRight, RefreshCw, Search } from "lucide-react";
@@ -84,6 +87,7 @@ function Stats({ stats }: { stats: Stat[] }) {
 }
 
 export function ResearchWorkbench() {
+  const [running, setRunning] = useState(true);
   const [sport, setSport] = useState<ResearchSport>("mlb");
   const [date, setDate] = useState(today);
   const [selected, setSelected] = useState<string | null>(null);
@@ -123,8 +127,12 @@ export function ResearchWorkbench() {
   const schedule = useQuery({
     queryKey: ["research-games", sport, date],
     queryFn: () => loadResearchGames({ data: { sport, date } }),
-    staleTime: 60_000,
-    refetchInterval: 60_000,
+    staleTime: 10_000,
+    refetchInterval: running ? LIVE_POLL_MS : false,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: running ? "always" : false,
+    refetchOnReconnect: running ? "always" : false,
+    retry: 1,
   });
   const games = schedule.data?.games ?? [];
   const game = games.find((g) => g.id === selected) ?? games[0];
@@ -162,6 +170,29 @@ export function ResearchWorkbench() {
             </button>
           ))}
         </div>
+      </div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface/50 p-3">
+        <Freshness
+          at={schedule.data?.fetchedAt}
+          running={running}
+          interval={LIVE_POLL_MS}
+          fetching={schedule.isFetching}
+          error={schedule.isError}
+        />
+        <button
+          className="rounded border border-border px-3 py-2 text-xs"
+          aria-pressed={!running}
+          onClick={() => {
+            setRunning((v) => !v);
+            if (!running) void schedule.refetch();
+          }}
+        >
+          {running ? "Pause live updates" : "Resume live updates"}
+        </button>
+        <p className="w-full text-[10px] text-muted">
+          Auto-refresh runs while this app is open. Background tabs may be throttled by your
+          browser. Manual refresh is always available.
+        </p>
       </div>
       {storageError && (
         <p role="status" className="mb-4 text-sm text-amber-400">
@@ -291,7 +322,7 @@ export function ResearchWorkbench() {
                 : "Loading schedule…"}
             </span>
           </div>
-          {schedule.isError ? (
+          {schedule.isError && !schedule.data ? (
             <div role="alert">
               <Empty>
                 Schedule unavailable. Refresh to retry; this is not confirmation that there are no
@@ -342,6 +373,7 @@ export function ResearchWorkbench() {
                 <GamePanel
                   key={`${sport}:${game.id}`}
                   sport={sport}
+                  running={running}
                   game={game}
                   date={date}
                   saved={saved}
@@ -358,28 +390,38 @@ export function ResearchWorkbench() {
 
 function GamePanel({
   sport,
+  running,
   game,
   date,
   saved,
   toggle,
 }: {
   sport: ResearchSport;
+  running: boolean;
   game: ResearchGame;
   date: string;
   saved: Saved[];
   toggle: (p: ResearchPlayer) => void;
 }) {
-  const [section, setSection] = useState("Players");
+  const [section, setSection] = useState("Live game");
   const [search, setSearch] = useState("");
   const [starters, setStarters] = useState(false);
   const [selected, setSelected] = useState<ResearchPlayer | null>(null);
   const query = useQuery({
     queryKey: ["game-research", sport, game.id],
     queryFn: () => loadGameResearch({ data: { sport, id: game.id } }),
-    staleTime: 60_000,
-    refetchInterval: game.state === "in" ? 60_000 : false,
+    staleTime: 10_000,
+    refetchInterval: (q) => pollInterval(q.state.data?.game.state || game.state, running),
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: running ? "always" : false,
+    refetchOnReconnect: running ? "always" : false,
+    retry: 1,
   });
   const detail = query.data;
+  const refetchGame = query.refetch;
+  useEffect(() => {
+    if (running) void refetchGame();
+  }, [running, refetchGame]);
   const players = (detail?.players ?? []).filter(
     (p) =>
       (!starters || p.starter) &&
@@ -409,12 +451,23 @@ function GamePanel({
           {detail?.game.status || game.status} · {game.venue || "Venue not supplied"} ·{" "}
           {time(game.date)} ET
         </p>
+        <div className="mt-3">
+          <Freshness
+            at={detail?.fetchedAt}
+            running={running}
+            interval={pollInterval(detail?.game.state || game.state) || 60_000}
+            fetching={query.isFetching}
+            error={query.isError}
+          />
+        </div>
         <div className="mt-4 flex flex-wrap gap-2">
           {teams.map((t) => (
             <span key={t.id} className="rounded border border-border px-3 py-1.5 text-xs">
               {t.code}{" "}
               <span className="ml-2 font-mono">
-                {game.state === "pre" ? t.record || "Record unavailable" : t.score}
+                {(detail?.game.state || game.state) === "pre"
+                  ? t.record || "Record unavailable"
+                  : t.score}
               </span>
             </span>
           ))}
@@ -425,7 +478,15 @@ function GamePanel({
         aria-label="Game research sections"
         className="flex gap-1 overflow-x-auto border-b border-border px-4"
       >
-        {["Players", "Availability", "Markets", "Team stats", "Reports"].map((s) => (
+        {[
+          "Live game",
+          "Players",
+          "Availability",
+          "Markets",
+          "Team stats",
+          "Venue map",
+          "Reports",
+        ].map((s) => (
           <button
             key={s}
             onClick={() => setSection(s)}
@@ -451,6 +512,8 @@ function GamePanel({
                 {warning}
               </p>
             ))}
+            {section === "Live game" && <LiveGame detail={detail} sport={sport} />}
+            {section === "Venue map" && <VenueView detail={detail} sport={sport} />}
             {section === "Players" && (
               <>
                 <div className="flex flex-wrap items-center gap-3">
@@ -621,7 +684,7 @@ function GamePanel({
             <footer className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
               <Source href={detail.source}>ESPN game source</Source>
               <p className="text-[10px] text-muted">
-                Retrieved {time(detail.fetchedAt)} ET · feed cached up to 60s
+                Retrieved {time(detail.fetchedAt)} ET · game feed cached up to 10s
               </p>
             </footer>
           </>
@@ -894,6 +957,14 @@ function PlayerPanel({
               {sample.push} exact-line result(s), counted as pushes and not overs.
             </p>
           )}
+          <SimulationLab
+            key={`${logSeason}:${metricIndex}`}
+            rows={rows}
+            metric={metricIndex}
+            label={labels[metricIndex]}
+            line={line}
+            selectable={selectable}
+          />
           {rows.length ? (
             <>
               <div

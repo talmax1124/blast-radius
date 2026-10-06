@@ -37,3 +37,24 @@ The old Sunday card marked a leg Sized when its hard-coded probability minus its
 ESPN is the workbench's current data provider; the existing sport desks retain their separate providers. Public feed schemas and availability can change. Game logs may lag recent games, rosters are current rather than historical, and live endpoint snapshots can differ briefly. Retrieval timestamps are not quote-update timestamps. The explorer has no connected multi-book prop comparison, snap-count/red-zone feed, Statcast pitch-level database, injury-news consensus model, or validated probability calibration. It does not imitate those capabilities with synthetic data. Existing sport model estimates remain separate from empirical research metrics.
 
 The daily brief is a source-based text synthesis, not a newly trained probability model. Model key/name and persistent deployment configuration are still required to verify a real hosted morning edition. The user is hosting the app separately; this PR does not activate a new production deployment.
+
+
+## Live game center and maps
+
+The research schedule checks ESPN every 15 seconds while open. Selected in-progress games refresh every 15 seconds, pregame every minute, and completed games every five minutes for corrections. A shared server cache lasts ten seconds after successful retrieval and coalesces in-flight requests. Failed requests are not cached. Pause/resume, reconnect/focus recovery, last retrieval age, offline state, and stale/error labels are explicit. Browser background throttling still applies; this is not a server daemon or a guaranteed real-time stream.
+
+The game center normalizes baseball plays and football drives, deduplicates IDs, and preserves feed order (baseball sequence numbers reset per at-bat). It shows source win probability, a scoring filter, MLB base occupancy and pitch coordinates, and NFL start/end field positions. Missing values remain unknown. Turnovers with incompatible coordinate frames are omitted. NBA/NHL shot maps are not implemented.
+
+MLB venue maps use uniquely matched official MLB venue-directory coordinates and an attributed OpenStreetMap embed. Other sports receive a venue search link until verified coordinates are connected. ESPN venue photographs and reported weather remain source-labeled. No API key or location permission is required.
+
+## Simulation lab
+
+Inside each player dossier, open Simulation lab after entering a prop line. Its 20,000 seeded draws per scenario resample whole completed game rows, using the existing season/date/window/split filters. One or two statistics from the same player can be evaluated jointly, preserving their empirical dependence. Missing, nonnumeric, duplicated, and invalid-date observations are excluded; at least five complete games are required.
+
+Lower and higher scenarios weight games by exp(tilt × clipped primary-stat z-score), alongside a uniform baseline. This changes resampling weights without inventing fractional counts or unseen stat pairs. Outputs include win/push/loss, exact weighted rates, effective sample size, the baseline distribution, an independence comparison, a 95% Wilson interval based on actual sample size, and Monte Carlo error based on trial count. These two kinds of uncertainty are intentionally separate.
+
+An expanding-window diagnostic uses only prior Eastern dates, requires five training games, smooths the empirical joint probability as (wins + 1)/(games + 2), and reports Brier loss on held-out games. It is a retrospective diagnostic at the chosen threshold, not proof of prospective calibration. Tests use known perfectly dependent and opposing outcomes, boundary probabilities, Wilson reference values, missing data, deterministic draws, and no-future-data checks.
+
+The simulation is a pregame empirical scenario tool. Live score, news, injuries, opponent strength, and weather do not automatically change its distribution. It does not yet simulate cross-player slips or full games, settle pushes by sportsbook rules, estimate payouts, or feed probabilities into the daily publishing pipeline. Existing daily models and text synthesis remain separate; this work must not be described as a trained, calibrated joint betting model.
+
+Method references: [NIST Wilson intervals](https://www.itl.nist.gov/div898/handbook/prc/section2/prc241.htm) and [scikit-learn probability evaluation](https://scikit-learn.org/stable/modules/calibration.html).

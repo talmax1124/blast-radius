@@ -1,3 +1,4 @@
+import { LIVE_CACHE_MS, matchMlbVenue } from "./live";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { SPORT_PATHS, list, normalizeGame, normalizeSummary, normalizeLog, str } from "./workbench";
@@ -10,6 +11,7 @@ export const loadResearchGames = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const raw = await feed(
       `${base}${SPORT_PATHS[data.sport]}/scoreboard?dates=${data.date.replaceAll("-", "")}&limit=100`,
+      LIVE_CACHE_MS,
     );
     if (!Array.isArray(raw.events))
       throw new Error("The schedule source returned an incomplete response.");
@@ -18,7 +20,10 @@ export const loadResearchGames = createServerFn({ method: "GET" })
 export const loadGameResearch = createServerFn({ method: "GET" })
   .validator(z.object({ sport, id }))
   .handler(async ({ data }) => {
-    const raw = await feed(`${base}${SPORT_PATHS[data.sport]}/summary?event=${data.id}`);
+    const raw = await feed(
+      `${base}${SPORT_PATHS[data.sport]}/summary?event=${data.id}`,
+      LIVE_CACHE_MS,
+    );
     if (!raw.header?.id) throw new Error("Game details are not available from the source yet.");
     const detail = normalizeSummary(raw, data.sport);
     // Pregame summaries often have no player tables. Team rosters are a separate,
@@ -76,4 +81,14 @@ export const loadPlayerResearch = createServerFn({ method: "GET" })
     if (!Array.isArray(raw.seasonTypes))
       throw new Error("Player game logs are unavailable from this source.");
     return normalizeLog(raw, data.sport, data.id);
+  });
+
+export const loadVenueCoordinates = createServerFn({ method: "GET" })
+  .validator(z.object({ name: z.string().min(1).max(160) }))
+  .handler(async ({ data }) => {
+    const raw = await feed("https://statsapi.mlb.com/api/v1/venues?hydrate=location", 86_400_000);
+    return {
+      coordinates: matchMlbVenue(list(raw.venues), data.name),
+      source: "https://statsapi.mlb.com/api/v1/venues?hydrate=location",
+    };
   });
