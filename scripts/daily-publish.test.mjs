@@ -1,14 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolve } from "node:path";
+import { resolve, join } from "node:path";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { createServer } from "vite";
 
 test("daily publication is atomic, retryable, and isolated by date/task", async () => {
   // Never point an integration test at a configured live database.
   assert.ok(!process.env.DATABASE_URL, "Run this test with DATABASE_URL unset");
+  const testDirectory = await mkdtemp(join(tmpdir(), "great-run-daily-test-"));
   const server = await createServer({
     configFile: false,
-    server: { middlewareMode: true },
+    // A second Vite instance must not replace the live preview's optimized modules.
+    cacheDir: join(testDirectory, "vite-cache"),
+    optimizeDeps: { noDiscovery: true, include: [] },
+    server: { middlewareMode: true, hmr: false },
     resolve: { alias: { "@": resolve("src") } },
     appType: "custom",
     logLevel: "error",
@@ -73,5 +79,6 @@ test("daily publication is atomic, retryable, and isolated by date/task", async 
     assert.equal((await dailyHistory()).length, 5);
   } finally {
     await server.close();
+    await rm(testDirectory, { recursive: true, force: true });
   }
 });
