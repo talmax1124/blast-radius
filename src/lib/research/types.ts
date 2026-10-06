@@ -1,4 +1,4 @@
-export type League = "mlb" | "nfl" | "nhl";
+export type League = "mlb" | "nfl" | "nba" | "nhl";
 export type Article = {
   id: string;
   league: League;
@@ -21,6 +21,8 @@ export type ResearchReport = {
   generatedAt: string;
   articles: Article[];
   feeds: ResearchFeed[];
+  context?: Article[];
+  contextWarnings?: string[];
   synthesis: { text: string; sourceIds: string[] }[];
   mode: "source-digest" | "model-assisted";
   model: string | null;

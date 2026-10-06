@@ -52,3 +52,9 @@ Publication means saved analytical editions inside this app. It does not place w
 - Live preview loaded all three news feeds and 66 recent items during verification. Search, league/topic filters, and the empty state were checked in the browser.
 - The pre-change full suite had 13 failures out of 195 script tests, including absent `.grok/skills/og` files, auth-schema fixtures, and platform metadata expectations. They are unrelated to this release; do not represent the full baseline suite as passing.
 - Production deployment, AI synthesis with a paid model, and a real scheduled five-task publication still require hosting configuration and have not been verified.
+
+## Research workbench
+
+`/research` includes live ESPN schedule, game summary, roster, and player game-log adapters for MLB, NFL, NBA and NHL. These need outbound HTTPS but no new API key. Server caches are bounded to 200 URLs, with 60-second game and five-minute player/roster TTLs; source errors are not cached as empty success. The optional scheduled model now receives up to six matchup summaries per league as well as dated news, with missing/limited coverage reported. This adds bounded source requests to the daily research task. It does not add an NBA slip-publishing task.
+
+Watchlist and notes are stored only in the current browser's local storage, not in the shared database. See `RESEARCH-AUDIT.md` for source limitations and the rationale for removing static example tickets.

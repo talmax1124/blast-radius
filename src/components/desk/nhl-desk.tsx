@@ -3,7 +3,6 @@ import { useMutation } from "@tanstack/react-query";
 import { Loader2, Radar } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Nameplate } from "@/components/desk/edition";
-import { SundaySlip } from "@/components/desk/sunday-slip";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -106,7 +105,7 @@ export function NhlDesk() {
           {board.slip ? <ShotSlip slip={board.slip} /> : (
             <p className="text-sm text-muted">No three-game shot card cleared 62%.</p>
           )}
-          <SundaySlip />
+
           <Tabs defaultValue="shots">
             <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0">
               <TabsTrigger value="shots">Shots</TabsTrigger>
