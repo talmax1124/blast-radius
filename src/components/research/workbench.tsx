@@ -446,7 +446,7 @@ function GamePanel({
         )}
         {detail && (
           <>
-            {detail.warnings.map((warning, i) => (
+            {(detail.warnings ?? []).map((warning, i) => (
               <p key={i} className="rounded border border-amber-400/20 p-3 text-xs text-amber-400">
                 {warning}
               </p>
