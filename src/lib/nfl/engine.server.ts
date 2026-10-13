@@ -1,4 +1,4 @@
-import { buildSlips, quoteCover } from "./slips.ts";
+import { buildSlips, quoteCover, survivesShock } from "./slips.ts";
 import {
   RZM,
   addLine,
@@ -599,18 +599,28 @@ const SHEET_MARKETS: Record<string, NflMarket[]> = {
 };
 
 function lineBand(market: NflMarket, line: number): boolean {
-  if (market === "pass") return line >= 175 && line <= 350;
-  if (market === "rush") return line >= 30 && line <= 120;
-  if (market === "recyd") return line >= 25 && line <= 120;
-  if (market === "rec") return line >= 2.5 && line <= 9.5;
+  if (market === "pass") return line >= 149 && line <= 320;
+  if (market === "rush") return line >= 25 && line <= 120;
+  if (market === "recyd") return line >= 12 && line <= 120;
+  if (market === "rec") return line >= 1.5 && line <= 8.5;
   if (market === "passtd") return line >= 0.5 && line <= 2.5;
   if (market === "fant") return line >= 12 && line <= 40;
   if (market === "atd") return Math.abs(line - 0.5) < 0.01;
   return false;
 }
 
-function leanOf(cover: number | null, playable: boolean): PropLean {
-  if (!playable || cover == null) return "no play";
+function leanOf(
+  market: NflMarket,
+  projection: number,
+  line: number | null,
+  cover: number | null,
+  playable: boolean,
+  pos: string,
+): PropLean {
+  if (!playable || cover == null || line == null) return "no play";
+  if (market !== "atd" && market !== "passtd" && !survivesShock(market, projection, line, pos)) {
+    return cover <= 0.43 ? "under" : "thin";
+  }
   if (cover >= 0.57) return "over";
   if (cover <= 0.43) return "under";
   return "no play";
@@ -637,7 +647,7 @@ function sheetProps(pick: NflPick): ListedProp[] {
       projection,
       line: quote?.line ?? null,
       cover: quote?.cover ?? null,
-      lean: leanOf(quote?.cover ?? null, playable),
+      lean: leanOf(market, projection, quote?.line ?? null, quote?.cover ?? null, playable, pick.pos),
     });
   }
   return out;

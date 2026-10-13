@@ -71,7 +71,7 @@ export type NflSlip = {
   legs: NflLeg[];
 };
 
-export type PropLean = "over" | "under" | "no play";
+export type PropLean = "over" | "under" | "no play" | "thin";
 
 export type ListedProp = {
   market: NflMarket;

@@ -1,7 +1,36 @@
 import { RZM, coverOver, fantasyPoints } from "./score.ts";
 import type { LegResult, NflActual, NflLeg, NflMarket, NflPick, NflQuote, NflSlip, OddsType } from "./types.ts";
 
-const COUNTING: NflMarket[] = ["pass", "rush", "recyd", "rec", "passtd"];
+const COUNTING: NflMarket[] = ["pass", "rush", "recyd", "rec"];
+
+/**
+ * Oct 12, Rams-Bills. Josh Allen's pass line sat close to his mean and he
+ * finished 32 yards short of it. A posted number on the projection is not a
+ * cash leg. The over has to still be a favorite after that kind of night.
+ */
+export const ALLEN = {
+  passYards: 32,
+  recYards: 18,
+  rushYards: 15,
+  receptions: 1.5,
+  minAfter: 0.55,
+} as const;
+
+export function shockedMean(market: NflMarket, projection: number): number {
+  if (market === "pass") return projection - ALLEN.passYards;
+  if (market === "recyd") return projection - ALLEN.recYards;
+  if (market === "rush") return projection - ALLEN.rushYards;
+  if (market === "rec") return projection - ALLEN.receptions;
+  return projection;
+}
+
+export function survivesShock(market: NflMarket, projection: number, line: number, pos: string): boolean {
+  if (market === "atd" || market === "passtd" || market === "fant") return false;
+  const mean = shockedMean(market, projection);
+  if (!(mean > 0) || !(line > 0)) return false;
+  if (market === "rec") return coverOver(mean, line, "count") >= ALLEN.minAfter;
+  return coverOver(mean, line, "yards", cvOf(market, pos)) >= ALLEN.minAfter;
+}
 
 export function marketLabel(market: NflMarket): string {
   switch (market) {
@@ -115,22 +144,21 @@ function oddsPenalty(odds: OddsType): number {
   return 0;
 }
 
-function sane(quote: NflQuote): boolean {
+function sane(quote: NflQuote, pos: string): boolean {
   if (quote.line <= 0) return false;
-  if (quote.market === "pass") return quote.oddsType === "standard" && quote.line >= 175 && quote.line <= 350 && quote.cover >= 0.56 && quote.cover <= 0.72;
-  if (quote.market === "rush") return quote.oddsType === "standard" && quote.line >= 30 && quote.line <= 120 && quote.cover >= 0.56 && quote.cover <= 0.72;
-  if (quote.market === "recyd") return quote.oddsType === "standard" && quote.line >= 25 && quote.line <= 120 && quote.cover >= 0.56 && quote.cover <= 0.72;
-  if (quote.market === "rec") return quote.oddsType === "standard" && quote.line >= 2.5 && quote.line <= 9.5 && quote.cover >= 0.56 && quote.cover <= 0.72;
-  if (quote.market === "passtd") return quote.oddsType === "standard" && quote.line >= 0.5 && quote.line <= 2.5 && quote.cover >= 0.54 && quote.cover <= 0.7;
-  if (quote.market === "atd") return quote.line === 0.5 && quote.cover >= 0.38 && quote.cover <= 0.62;
-  if (quote.market === "fant") return quote.oddsType === "standard" && quote.line >= 12 && quote.line <= 28 && quote.cover >= 0.56 && quote.cover <= 0.7;
+  if (!survivesShock(quote.market, quote.projection, quote.line, pos)) return false;
+  if (quote.market === "pass") return quote.oddsType === "standard" && quote.line >= 149 && quote.line <= 320 && quote.cover >= 0.62 && quote.cover <= 0.93;
+  if (quote.market === "rush") return quote.oddsType === "standard" && quote.line >= 25 && quote.line <= 120 && quote.cover >= 0.62 && quote.cover <= 0.93;
+  if (quote.market === "recyd") return quote.oddsType === "standard" && quote.line >= 12 && quote.line <= 120 && quote.cover >= 0.62 && quote.cover <= 0.93;
+  if (quote.market === "rec") return quote.oddsType === "standard" && quote.line >= 1.5 && quote.line <= 8.5 && quote.cover >= 0.62 && quote.cover <= 0.93;
   return false;
 }
+
 function candidates(picks: NflPick[]): Cand[] {
   const out: Cand[] = [];
   for (const pick of picks) {
     for (const quote of pick.quotes) {
-      if (!sane(quote)) continue;
+      if (!sane(quote, pick.pos)) continue;
       out.push({ pick, quote });
     }
   }
@@ -230,7 +258,7 @@ function slip(size: 2 | 3 | 6, title: string, group: Cand[] | null, skipNote: st
   return {
     size,
     title,
-    notes: `${names}. Model EV ${ev.toFixed(2)}×.`,
+    notes: `${names}. Still a favorite after the Allen shock. Model EV ${ev.toFixed(2)}×.`,
     skip: false,
     legs: group.map(toLeg),
   };
@@ -240,7 +268,7 @@ export function buildSlips(picks: NflPick[], lineCount: number): NflSlip[] {
   const emptyNote =
     lineCount === 0
       ? "No PrizePicks board — skip, not a loss. The Goal Line is the card."
-      : "Nothing cleared the EV floor. Skip, not a loss.";
+      : "No line is still a favorite after a 32-yard drop. Skip, not a loss.";
   const pool = candidates(picks).slice(0, 14);
   const counting = pool.filter((c) => COUNTING.includes(c.quote.market));
 

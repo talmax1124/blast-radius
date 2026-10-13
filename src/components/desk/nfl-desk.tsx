@@ -187,6 +187,9 @@ export function NflDesk() {
               </ol>
             </TabsContent>
             <TabsContent value="slips" className="mt-4 grid gap-3 lg:grid-cols-3">
+              <p className="text-sm leading-relaxed text-muted lg:col-span-3">
+                A yardage over has to stay a favorite after the projection drops 32 passing yards, 18 receiving yards, or 15 rushing yards. A catch total has to survive 1.5 fewer receptions. That is the Allen rule. A thin line is a pass, not a play.
+              </p>
               {board.slips.map((slip) => (
                 <SlipCard key={slip.size} slip={slip} />
               ))}
@@ -267,7 +270,7 @@ function MatchCard({ sheet }: { sheet: MatchSheet }) {
   const sides = [sheet.away, sheet.home];
   const leans = sheet.players.flatMap((player) =>
     player.props
-      .filter((prop) => prop.lean !== "no play")
+      .filter((prop) => prop.lean === "over" || prop.lean === "under")
       .map((prop) => ({ prop, player })),
   );
   return (
@@ -366,9 +369,7 @@ function SheetRow({ player }: { player: SheetPlayer }) {
 function Lean({ prop }: { prop: ListedProp }) {
   if (prop.lean === "over") return <span className="text-right text-pine">Over</span>;
   if (prop.lean === "under") return <span className="text-right text-brick">Under</span>;
-  if (prop.line != null && prop.cover != null && (prop.cover >= 0.57 || prop.cover <= 0.43)) {
-    return <span className="text-right text-stone">Watch</span>;
-  }
+  if (prop.lean === "thin") return <span className="text-right text-stone">Thin</span>;
   return <span className="text-right text-faint">Pass</span>;
 }
 
@@ -546,9 +547,7 @@ function Formula({ board }: { board: NflBoard }) {
           P(anytime) = 1 − exp(−λ)
         </p>
         <p className="mt-4 max-w-prose text-sm leading-relaxed text-ink/70">
-          Yards are lognormal: expected attempts times a shrunk yards-per-play, times how many yards the opponent has allowed,
-          capped so a two-game fluke cannot double the number. Receptions are Poisson. Power pays 3× and 6×. Flex on six pays
-          25× / 2× / 0.4×. A skip is an empty card, not a loss.
+          Yards are lognormal. Receptions are Poisson. Before a line can make a slip, the over is repriced on a shocked mean: 32 fewer passing yards, 18 fewer receiving yards, 15 fewer rushing yards, or 1.5 fewer catches. If that night is no longer a favorite, the line is thin. Touchdowns stay off the cash card. Power pays 3× and 6×. Flex on six pays 25× / 2× / 0.4×. A skip is an empty card, not a loss.
         </p>
       </div>
       {pick ? (

@@ -14,7 +14,7 @@
 export type Pos = "QB" | "RB" | "WR" | "TE";
 
 export const RZM = {
-  version: "1.3",
+  version: "1.4",
   name: "Red-Zone Mass",
   phi: 0.62,
   tauGames: 6,

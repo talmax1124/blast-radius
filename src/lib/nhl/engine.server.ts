@@ -1,4 +1,5 @@
 import { ICE, projectSkater, slipSweep, type SkaterPos } from "./score.ts";
+import { clearsCashGate } from "./regress.ts";
 import type { NhlBoard, NhlGame, NhlSkater, NhlSlip } from "./types.ts";
 
 const UA = "GreatRun/NHL-1.0";
@@ -249,23 +250,32 @@ async function projectPlayer(game: NhlGame, side: Side, player: RosterAthlete): 
 }
 
 function buildSlip(skaters: NhlSkater[]): NhlSlip | null {
-  const used = new Set<string>();
+  const ranked = skaters
+    .filter((skater) => skater.careerGp >= 40)
+    .map((skater) => {
+      const shot = clearsCashGate({ market: "shot", lambda: skater.lambdaSog, line: 1.5 });
+      const point = clearsCashGate({ market: "point", lambda: skater.lambdaPts, line: 0.5 });
+      const p = point && skater.pPoint >= skater.pShots15 ? skater.pPoint : skater.pShots15;
+      return { skater, ok: shot || point, p };
+    })
+    .filter((row) => row.ok && row.p >= 0.62)
+    .sort((a, b) => b.p - a.p);
+  const perGame = new Map<string, number>();
   const legs: NhlSkater[] = [];
-  for (const skater of skaters) {
-    if (skater.careerGp < 40) continue;
-    if (skater.pShots15 < 0.62) continue;
-    if (used.has(skater.gameId)) continue;
-    used.add(skater.gameId);
-    legs.push(skater);
-    if (legs.length === 3) break;
+  for (const row of ranked) {
+    const n = perGame.get(row.skater.gameId) ?? 0;
+    if (n >= 2) continue;
+    perGame.set(row.skater.gameId, n + 1);
+    legs.push(row.skater);
+    if (legs.length === 4) break;
   }
   if (legs.length < 3) return null;
-  const sweep = slipSweep(legs.map((leg) => leg.pShots15));
+  const sweep = slipSweep(legs.map((leg) => Math.max(leg.pPoint, leg.pShots15)));
   return {
-    title: "Sunday shot 3",
-    market: "Over 1.5 shots",
+    title: "Cash 4",
+    market: "Points or 1.5 shots",
     sweep,
-    note: "Three games. The bet is two shots, not a goal. Books usually juice 1.5. Take it only if the price is shorter than the probability on the card.",
+    note: "No anytime goals. No assist props. A shot leg has to be a full shot under the rate. Oct 11 lost 0-3 because the goal and the assist missed inside a game the favorite won.",
     legs,
   };
 }
