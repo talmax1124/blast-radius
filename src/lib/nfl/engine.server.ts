@@ -703,7 +703,7 @@ function buildMatch(
     total: game.total,
     venue: game.venue,
     weather,
-    note: "Fit on weeks 1–2 only. Tonight’s box does not train the card. Puka Nacua is out — he did not practice, and the doubtful tag is priced as inactive. His week-1 role moves in full, by actual target share. A QB rush over has to survive a 45% carry cut, not a 15-yard haircut. An under has to sit past a hot night — pass +55 yards, receptions +2 — and still be a dog to the number. Questionable keeps 82%. Over and under are standard lines inside a sane band. A short or goblin number can show an edge and still read Pass.",
+    note: "Fit on weeks 1–2 only. Tonight’s box does not train the card. Puka Nacua is out — he did not practice, and the doubtful tag is priced as inactive. His week-1 role moves in full, by actual target share. A QB rush over has to survive a 45% carry cut, not a 15-yard haircut. An under has to sit past a hot night — pass +64 yards, one extra catch — and still be a dog to the number. A receiving-yard over needs 26 yards of room. Questionable keeps 82%. Over and under are standard lines inside a sane band. A short or goblin number can show an edge and still read Pass.",
     players,
   };
 }

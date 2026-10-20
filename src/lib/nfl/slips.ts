@@ -10,26 +10,27 @@ const COUNTING: NflMarket[] = ["pass", "rush", "recyd", "rec"];
  */
 export const ALLEN = {
   passYards: 32,
-  recYards: 18,
+  recYards: 26,
   rushYards: 15,
   receptions: 1.5,
   minAfter: 0.55,
 } as const;
 
 /**
- * Oct 19, Commanders at 49ers. Three different misses, one cause.
- * Daniels rush 40.5 cleared a −15 yard shock off a 68-yard mean and he
- * ran four times for 10. A yardage haircut is not a carry cut.
- * The pass under at 211.5 and the catch unders at 4.5 and 5.5 were
- * inside one hot night. An under has to still be a dog after that night.
+ * Filter retune. The +2 catch spike was fit to one 5-catch winner and
+ * it silenced the only shaded market that clears a juiced price.
+ * One extra catch separates a 4.5 (no room) from a 5.5 (a catch to spare).
+ * Pass unders need 64 yards of room, not 55: the 55-yard cut was a push
+ * once the under is priced at -125. Receiving-yard overs need 26 yards
+ * of room; 18 still let a coin-flip over onto the card.
  */
 export const VOLUME = {
   qbRushKeep: 0.55,
-  passYards: 55,
+  passYards: 64,
   recYards: 22,
-  rushYards: 18,
-  receptions: 2,
-  maxOverAfter: 0.42,
+  rushYards: 15,
+  receptions: 1,
+  maxOverAfter: 0.46,
 } as const;
 
 export function shockedMean(market: NflMarket, projection: number, pos = ""): number {

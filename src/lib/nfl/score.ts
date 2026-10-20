@@ -11,12 +11,13 @@
  * Yards are lognormal. Receptions and multi-TD props are Poisson.
  * v1.5: a dog's pass volume gets a chase lift. A flat script was pricing
  * trailing quarterbacks off their season mean.
+ * v1.6 retunes the cash filter. The mass model is unchanged.
  */
 
 export type Pos = "QB" | "RB" | "WR" | "TE";
 
 export const RZM = {
-  version: "1.5",
+  version: "1.6",
   name: "Red-Zone Mass",
   phi: 0.62,
   tauGames: 6,

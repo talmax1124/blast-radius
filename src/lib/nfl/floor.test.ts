@@ -92,10 +92,10 @@ describe("Allen floor", () => {
     assert.equal(survivesShock("rush", 67.7, 40.5, "RB"), true);
   });
 
-  it("rejects unders that a single hot night already clears", () => {
+  it("rejects unders inside one catch and keeps a catch of room", () => {
     assert.equal(survivesSpike("pass", 157, 211.5, "QB"), false);
     assert.equal(survivesSpike("rec", 3.6, 4.5, "RB"), false);
-    assert.equal(survivesSpike("rec", 4.1, 5.5, "TE"), false);
+    assert.equal(survivesSpike("rec", 4.1, 5.5, "TE"), true);
     assert.equal(survivesSpike("rec", 3.2, 7.5, "RB"), true);
     assert.equal(survivesSpike("pass", 180, 260.5, "QB"), true);
   });
