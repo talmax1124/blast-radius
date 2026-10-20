@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildSlips, survivesShock } from "./slips.ts";
+import { buildSlips, survivesShock, survivesSpike } from "./slips.ts";
 import type { NflPick, NflQuote } from "./types.ts";
 
 describe("Allen floor", () => {
@@ -85,5 +85,18 @@ describe("Allen floor", () => {
     assert.equal(power.skip, false);
     assert.ok(power.legs.every((leg) => leg.market === "rec" && leg.line === 4.5));
     assert.ok(power.legs.every((leg) => leg.name !== "allen"));
+  });
+
+  it("rejects a quarterback rush over that dies when the carries are cut", () => {
+    assert.equal(survivesShock("rush", 67.7, 40.5, "QB"), false);
+    assert.equal(survivesShock("rush", 67.7, 40.5, "RB"), true);
+  });
+
+  it("rejects unders that a single hot night already clears", () => {
+    assert.equal(survivesSpike("pass", 157, 211.5, "QB"), false);
+    assert.equal(survivesSpike("rec", 3.6, 4.5, "RB"), false);
+    assert.equal(survivesSpike("rec", 4.1, 5.5, "TE"), false);
+    assert.equal(survivesSpike("rec", 3.2, 7.5, "RB"), true);
+    assert.equal(survivesSpike("pass", 180, 260.5, "QB"), true);
   });
 });

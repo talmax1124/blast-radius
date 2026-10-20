@@ -9,12 +9,14 @@
  * Channel tilt is share-conserving — a short roster does not eat the team.
  * Anytime probability is Poisson, 1 − exp(−λ), after a calibration multiply.
  * Yards are lognormal. Receptions and multi-TD props are Poisson.
+ * v1.5: a dog's pass volume gets a chase lift. A flat script was pricing
+ * trailing quarterbacks off their season mean.
  */
 
 export type Pos = "QB" | "RB" | "WR" | "TE";
 
 export const RZM = {
-  version: "1.4",
+  version: "1.5",
   name: "Red-Zone Mass",
   phi: 0.62,
   tauGames: 6,
@@ -31,6 +33,8 @@ export const RZM = {
   recFinishFrac: 0.55,
   scriptRush: 0.2,
   scriptPass: -0.1,
+  /** Extra pass-attempt lift when script is negative. A +7 dog is not a 4% event. */
+  scriptChase: 0.35,
   totalRushExp: 0.55,
   totalPassExp: 0.7,
   calib: 0.74,
@@ -49,6 +53,8 @@ export const RZM = {
   permHi: 1.22,
   cvPass: 0.27,
   cvRush: 0.52,
+  /** QB rush yards are an attempt coin-flip. Wider than a running back. */
+  cvRushQb: 0.78,
   cvRecYd: 0.6,
   cvFantasyQb: 0.32,
   cvFantasySkill: 0.58,
@@ -266,7 +272,8 @@ export function teamMass(
   const playsW = off.passAtt + off.rushAtt;
   const plays = shrunkRate(playsW, offWeight, RZM.leaguePlays) * tot ** 0.22;
   const passShare = (off.passAtt + RZM.leaguePassRate * 40) / (playsW + 40);
-  const passAtt = plays * passShare * (1 - 0.06 * s);
+  const chase = s < 0 ? RZM.scriptChase * -s : 0;
+  const passAtt = plays * passShare * (1 - 0.06 * s + chase);
   const rushAtt = plays * (1 - passShare) * (1 + 0.08 * s);
   return {
     rushTd,

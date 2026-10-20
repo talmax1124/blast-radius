@@ -16,9 +16,26 @@ export const ALLEN = {
   minAfter: 0.55,
 } as const;
 
-export function shockedMean(market: NflMarket, projection: number): number {
+/**
+ * Oct 19, Commanders at 49ers. Three different misses, one cause.
+ * Daniels rush 40.5 cleared a −15 yard shock off a 68-yard mean and he
+ * ran four times for 10. A yardage haircut is not a carry cut.
+ * The pass under at 211.5 and the catch unders at 4.5 and 5.5 were
+ * inside one hot night. An under has to still be a dog after that night.
+ */
+export const VOLUME = {
+  qbRushKeep: 0.55,
+  passYards: 55,
+  recYards: 22,
+  rushYards: 18,
+  receptions: 2,
+  maxOverAfter: 0.42,
+} as const;
+
+export function shockedMean(market: NflMarket, projection: number, pos = ""): number {
   if (market === "pass") return projection - ALLEN.passYards;
   if (market === "recyd") return projection - ALLEN.recYards;
+  if (market === "rush" && pos === "QB") return projection * VOLUME.qbRushKeep;
   if (market === "rush") return projection - ALLEN.rushYards;
   if (market === "rec") return projection - ALLEN.receptions;
   return projection;
@@ -26,7 +43,7 @@ export function shockedMean(market: NflMarket, projection: number): number {
 
 export function survivesShock(market: NflMarket, projection: number, line: number, pos: string): boolean {
   if (market === "atd" || market === "passtd" || market === "fant") return false;
-  const mean = shockedMean(market, projection);
+  const mean = shockedMean(market, projection, pos);
   if (!(mean > 0) || !(line > 0)) return false;
   if (market === "rec") return coverOver(mean, line, "count") >= ALLEN.minAfter;
   return coverOver(mean, line, "yards", cvOf(market, pos)) >= ALLEN.minAfter;
@@ -72,10 +89,27 @@ export function projectionOf(pick: NflPick, market: NflMarket): number {
 
 export function cvOf(market: NflMarket, pos: string): number {
   if (market === "pass") return RZM.cvPass;
-  if (market === "rush") return RZM.cvRush;
+  if (market === "rush") return pos === "QB" ? RZM.cvRushQb : RZM.cvRush;
   if (market === "recyd") return RZM.cvRecYd;
   if (market === "fant") return pos === "QB" ? RZM.cvFantasyQb : RZM.cvFantasySkill;
   return 0.45;
+}
+
+/** Mean on a hot night. The under has to beat this, not the season rate. */
+export function spikedMean(market: NflMarket, projection: number): number {
+  if (market === "pass") return projection + VOLUME.passYards;
+  if (market === "recyd") return projection + VOLUME.recYards;
+  if (market === "rush") return projection + VOLUME.rushYards;
+  if (market === "rec") return projection + VOLUME.receptions;
+  return projection;
+}
+
+export function survivesSpike(market: NflMarket, projection: number, line: number, pos: string): boolean {
+  if (market === "atd" || market === "passtd" || market === "fant") return false;
+  const mean = spikedMean(market, projection);
+  if (!(mean > 0) || !(line > 0) || !(mean < line)) return false;
+  const cover = market === "rec" ? coverOver(mean, line, "count") : coverOver(mean, line, "yards", cvOf(market, pos));
+  return cover <= VOLUME.maxOverAfter;
 }
 
 export function quoteCover(pick: NflPick, market: NflMarket, line: number): number {
