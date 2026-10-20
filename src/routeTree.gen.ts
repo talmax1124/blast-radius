@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BoardRouteImport } from './routes/board'
+import { Route as FinderRouteImport } from './routes/finder'
 import { Route as NbaRouteImport } from './routes/nba'
 import { Route as NflRouteImport } from './routes/nfl'
 import { Route as NhlRouteImport } from './routes/nhl'
@@ -24,6 +25,11 @@ const IndexRoute = IndexRouteImport.update({
 const BoardRoute = BoardRouteImport.update({
   id: '/board',
   path: '/board',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinderRoute = FinderRouteImport.update({
+  id: '/finder',
+  path: '/finder',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NbaRoute = NbaRouteImport.update({
@@ -50,6 +56,7 @@ const ApiDeskTickRoute = ApiDeskTickRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/board': typeof BoardRoute
+  '/finder': typeof FinderRoute
   '/nba': typeof NbaRoute
   '/nfl': typeof NflRoute
   '/nhl': typeof NhlRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/board': typeof BoardRoute
+  '/finder': typeof FinderRoute
   '/nba': typeof NbaRoute
   '/nfl': typeof NflRoute
   '/nhl': typeof NhlRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/board': typeof BoardRoute
+  '/finder': typeof FinderRoute
   '/nba': typeof NbaRoute
   '/nfl': typeof NflRoute
   '/nhl': typeof NhlRoute
@@ -74,15 +83,25 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/board' | '/nba' | '/nfl' | '/nhl' | '/api/desk/tick'
+  fullPaths:
+    '/' | '/board' | '/finder' | '/nba' | '/nfl' | '/nhl' | '/api/desk/tick'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/board' | '/nba' | '/nfl' | '/nhl' | '/api/desk/tick'
-  id: '__root__' | '/' | '/board' | '/nba' | '/nfl' | '/nhl' | '/api/desk/tick'
+  to: '/' | '/board' | '/finder' | '/nba' | '/nfl' | '/nhl' | '/api/desk/tick'
+  id:
+    | '__root__'
+    | '/'
+    | '/board'
+    | '/finder'
+    | '/nba'
+    | '/nfl'
+    | '/nhl'
+    | '/api/desk/tick'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BoardRoute: typeof BoardRoute
+  FinderRoute: typeof FinderRoute
   NbaRoute: typeof NbaRoute
   NflRoute: typeof NflRoute
   NhlRoute: typeof NhlRoute
@@ -103,6 +122,13 @@ declare module '@tanstack/react-router' {
       path: '/board'
       fullPath: '/board'
       preLoaderRoute: typeof BoardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/finder': {
+      id: '/finder'
+      path: '/finder'
+      fullPath: '/finder'
+      preLoaderRoute: typeof FinderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nba': {
@@ -139,6 +165,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BoardRoute: BoardRoute,
+  FinderRoute: FinderRoute,
   NbaRoute: NbaRoute,
   NflRoute: NflRoute,
   NhlRoute: NhlRoute,

@@ -1,8 +1,9 @@
 /**
  * Minutes Mass. An NBA prop is minutes times a per-minute rate.
  * Minutes shrink toward a position prior. Rates shrink the same way.
- * An over has to survive six minutes coming off. An under has to
- * survive four extra minutes and still be a dog to the number.
+ * This year's regular-season games move the rate. Preseason moves it only
+ * when no regular-season game has been played, and only with a 16-game
+ * weight, so four exhibition nights cannot replace last year.
  * The cash number is the line we would buy. It is not a posted price.
  */
 
@@ -10,10 +11,11 @@ export type Pos = "G" | "F" | "C";
 export type Market = "pts" | "reb" | "ast" | "threes" | "pra";
 
 export const RIM = {
-  version: "1.1",
+  version: "1.2",
   name: "Minutes Mass",
   shrinkGames: 10,
   formGames: 8,
+  preGames: 16,
   minuteCut: 6,
   minuteSpike: 4,
   minAfter: 0.55,
@@ -47,7 +49,7 @@ export type Quote = {
   cover: number | null;
 };
 
-export function shrink(season: number, prior: number, gp: number, k = RIM.shrinkGames): number {
+export function shrink(season: number, prior: number, gp: number, k: number = RIM.shrinkGames): number {
   const played = Math.max(0, gp);
   const w = played / (played + k);
   return w * Math.max(0, season) + (1 - w) * Math.max(0, prior);
@@ -78,6 +80,15 @@ export function recentForm(games: LoggedGame[]): { line: Line; gp: number; lastD
   const gp = reg.length;
   const avg = (key: "min" | "pts" | "reb" | "ast" | "threes") => reg.reduce((sum, game) => sum + game[key], 0) / gp;
   return { line: { min: avg("min"), pts: avg("pts"), reb: avg("reb"), ast: avg("ast"), threes: avg("threes") }, gp, lastDate: last?.date ?? null };
+}
+
+/** Exhibition games only. Used when the regular season has not started. */
+export function preseasonForm(games: LoggedGame[]): { line: Line; gp: number } {
+  const pre = games.filter((game) => game.preseason && game.min > 0);
+  if (!pre.length) return { line: { min: 0, pts: 0, reb: 0, ast: 0, threes: 0 }, gp: 0 };
+  const gp = pre.length;
+  const avg = (key: "min" | "pts" | "reb" | "ast" | "threes") => pre.reduce((sum, game) => sum + game[key], 0) / gp;
+  return { line: { min: avg("min"), pts: avg("pts"), reb: avg("reb"), ast: avg("ast"), threes: avg("threes") }, gp };
 }
 
 export function isBackToBack(lastDate: string | null, tipIso: string): boolean {
@@ -222,6 +233,8 @@ export function projectPlayer(input: {
   home: boolean;
   recent?: Line | null;
   recentGp?: number;
+  pre?: Line | null;
+  preGp?: number;
   defense?: number;
   backToBack?: boolean;
 }): { minutes: number; quotes: Record<Market, Quote> } {
@@ -246,6 +259,15 @@ export function projectPlayer(input: {
     reb = mix(reb, input.recent.reb);
     ast = mix(ast, input.recent.ast);
     threes = mix(threes, input.recent.threes);
+  }
+  const preGp = input.preGp ?? 0;
+  if (recentGp === 0 && preGp > 0 && input.pre && input.pre.min > 0) {
+    minutes = shrink(input.pre.min, minutes, preGp, RIM.preGames);
+    const mixPre = (base: number, total: number) => shrink(perMinute(total, input.pre!.min, base), base, preGp, RIM.preGames);
+    pts = mixPre(pts, input.pre.pts);
+    reb = mixPre(reb, input.pre.reb);
+    ast = mixPre(ast, input.pre.ast);
+    threes = mixPre(threes, input.pre.threes);
   }
   if (input.backToBack) minutes *= RIM.b2bMinutes;
   const defense = input.defense ?? 1;

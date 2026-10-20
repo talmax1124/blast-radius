@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildCard, coverOver, defenseFactor, gamesFromLog, isBackToBack, projectPlayer, recentForm, shrink } from "./score.ts";
+import { buildCard, coverOver, defenseFactor, gamesFromLog, isBackToBack, preseasonForm, projectPlayer, recentForm, shrink } from "./score.ts";
 
 const line = { min: 36, pts: 28, reb: 8, ast: 6, threes: 3 };
 
@@ -161,5 +161,28 @@ describe("minutes mass", () => {
     const kept = recentForm(parsed);
     assert.equal(kept.gp, 1);
     assert.equal(kept.line.pts, 22);
+  });
+
+  it("lets four preseason games nudge a quiet regular season, and ignores them once the season starts", () => {
+    const base = { pos: "G" as const, gp: 70, season: { min: 32, pts: 20, reb: 4, ast: 5, threes: 2 }, careerGp: 200, career: { min: 31, pts: 18, reb: 4, ast: 5, threes: 2 }, home: true };
+    const quiet = projectPlayer(base);
+    const nudged = projectPlayer({ ...base, pre: { min: 36, pts: 30, reb: 6, ast: 8, threes: 4 }, preGp: 4 });
+    assert.ok(nudged.quotes.pts.projection > quiet.quotes.pts.projection);
+    assert.ok(nudged.quotes.pts.projection < quiet.quotes.pts.projection + 4);
+    const started = projectPlayer({
+      ...base,
+      recent: { min: 33, pts: 22, reb: 4, ast: 5, threes: 2 },
+      recentGp: 2,
+      pre: { min: 36, pts: 30, reb: 6, ast: 8, threes: 4 },
+      preGp: 4,
+    });
+    const noPre = projectPlayer({ ...base, recent: { min: 33, pts: 22, reb: 4, ast: 5, threes: 2 }, recentGp: 2 });
+    assert.equal(started.quotes.pts.projection, noPre.quotes.pts.projection);
+    const onlyPre = preseasonForm([
+      { min: 20, pts: 12, reb: 3, ast: 2, threes: 1, date: "2026-10-08", preseason: true },
+      { min: 34, pts: 22, reb: 5, ast: 6, threes: 2, date: "2026-10-18", preseason: false },
+    ]);
+    assert.equal(onlyPre.gp, 1);
+    assert.equal(onlyPre.line.pts, 12);
   });
 });

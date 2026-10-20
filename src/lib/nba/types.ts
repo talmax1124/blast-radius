@@ -1,3 +1,4 @@
+import type { FinderRow } from "@/lib/finder/types";
 import type { Market, Quote } from "./score.ts";
 
 export type NbaGame = {
@@ -53,5 +54,6 @@ export type NbaBoard = {
   games: NbaGame[];
   players: NbaPlayer[];
   slip: NbaSlip | null;
+  finder: FinderRow[];
   notes: string[];
 };

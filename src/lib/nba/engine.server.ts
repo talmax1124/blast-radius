@@ -1,4 +1,6 @@
-import { buildCard, defenseFactor, gamesFromLog, isBackToBack, projectPlayer, recentForm, RIM, type Market, type Pos } from "./score.ts";
+import { hitCard, researchLine, type Sample } from "@/lib/finder/rate";
+import type { FinderRow } from "@/lib/finder/types";
+import { buildCard, defenseFactor, gamesFromLog, isBackToBack, preseasonForm, projectPlayer, recentForm, RIM, type LoggedGame, type Market, type Pos } from "./score.ts";
 import type { NbaActual, NbaBoard, NbaGame, NbaPlayer } from "./types.ts";
 
 const UA = "GreatRun/NBA-1.0";
@@ -15,6 +17,14 @@ function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T>
     cache.set(key, { expires: Date.now() + ttlMs, value });
     return value;
   });
+}
+
+function samples(games: LoggedGame[], market: Market): Sample[] {
+  return games.map((game) => ({
+    value: market === "pra" ? game.pts + game.reb + game.ast : game[market],
+    date: game.date,
+    preseason: game.preseason,
+  }));
 }
 
 async function getJson<T>(url: string): Promise<T> {
@@ -258,21 +268,24 @@ async function loadBoard(ymd: string, date: string): Promise<NbaBoard> {
   });
 
   const fetched = await mapPool(rosters.flatMap((roster) => roster.athletes.map((athlete) => ({ roster, athlete }))), 8, async ({ roster, athlete }) => {
-    const [stats, games] = await Promise.all([
+    const [stats, games, prior] = await Promise.all([
       loadAthlete(athlete.id!, defense.seasonYear),
       loadForm(athlete.id!, defense.seasonYear),
+      loadForm(athlete.id!, defense.seasonYear - 1),
     ]);
-    return { roster, athlete, stats, games };
+    return { roster, athlete, stats, games, prior };
   });
 
   const empty = { gp: 0, min: 0, pts: 0, reb: 0, ast: 0, threes: 0 };
   const seasonStarted = fetched.some((row) => recentForm(row.games).gp > 0);
   const players: NbaPlayer[] = [];
+  const finder: FinderRow[] = [];
   for (const row of fetched) {
     const form = recentForm(row.games);
+    const pre = preseasonForm(row.games);
     const season = row.stats?.season ?? empty;
     const career = row.stats?.career ?? empty;
-    if (season.gp < 1 && form.gp < 1) continue;
+    if (season.gp < 1 && form.gp < 1 && pre.gp < 1) continue;
     const { job } = row.roster;
     const opp = job.side.home ? job.game.away : job.game.home;
     const oppId = jobs.find((item) => item.game.id === job.game.id && item.side.id !== job.side.id)?.side.id ?? "";
@@ -288,13 +301,16 @@ async function loadBoard(ymd: string, date: string): Promise<NbaBoard> {
       home: job.side.home,
       recent: form.line,
       recentGp: form.gp,
+      pre: pre.line,
+      preGp: pre.gp,
       defense: factor,
       backToBack,
     });
     if (projected.minutes < 18) continue;
     const actual = boxes.get(job.game.id)?.get(row.athlete.id!) ?? null;
+    const id = `${job.game.id}:${row.athlete.id}`;
     players.push({
-      id: `${job.game.id}:${row.athlete.id}`,
+      id,
       espnId: row.athlete.id!,
       name: row.athlete.displayName!,
       team: job.side.abbr,
@@ -311,6 +327,38 @@ async function loadBoard(ymd: string, date: string): Promise<NbaBoard> {
       quotes: projected.quotes,
       actual,
     });
+    const recentGames = form.gp > 0 ? row.games.filter((game) => !game.preseason) : row.games.filter((game) => game.preseason);
+    const seasonGames = [...row.prior.filter((game) => !game.preseason), ...row.games.filter((game) => !game.preseason)];
+    const preGames = row.games.filter((game) => game.preseason);
+    for (const market of ["pts", "reb", "ast", "threes", "pra"] as Market[]) {
+      const quote = projected.quotes[market];
+      const line = researchLine(quote.projection);
+      const card = hitCard(line, samples(recentGames, market), samples(seasonGames, market), samples(preGames, market));
+      finder.push({
+        id: `${id}:${market}`,
+        sport: "NBA",
+        name: row.athlete.displayName!,
+        team: job.side.abbr,
+        opp,
+        pos: row.athlete.position?.abbreviation ?? "G",
+        game: `${job.game.away} at ${job.game.home}`,
+        start: job.game.start,
+        market,
+        line,
+        projection: quote.projection,
+        lean: quote.lean,
+        avg: card.avg,
+        diff: card.diff,
+        l5: card.l5,
+        l10: card.l10,
+        l15: card.l15,
+        season: card.season,
+        pre: card.pre,
+        streak: card.streak,
+        n10: card.n10,
+        source: card.source,
+      });
+    }
   }
   players.sort((a, b) => b.quotes.pts.projection - a.quotes.pts.projection);
 
@@ -345,10 +393,11 @@ async function loadBoard(ymd: string, date: string): Promise<NbaBoard> {
           })),
         }
       : null,
+    finder,
     notes: [
-      `${RIM.name} ${RIM.version}. Last year's regular season is the base, pulled toward the years before it. This year's regular-season games move it, with an ${RIM.formGames}-game weight. Preseason and the playoffs do not. Opponent points allowed apply only after a regular-season sample exists, and the move is capped at 8%. A back-to-back takes 4% off the minutes.`,
+      `${RIM.name} ${RIM.version}. Last year's regular season is the base, pulled toward the years before it. This year's regular-season games move it, with an ${RIM.formGames}-game weight. Preseason moves it only before the regular season starts, with a ${RIM.preGames}-game weight. Opponent points allowed apply only after a regular-season sample exists, and the move is capped at 8%. A back-to-back takes 4% off the minutes.`,
       `An over is live only if six minutes off still covers a number close to the projection. An under is live only if four extra minutes still leave it a dog, and that number is still close. A 0.5 three is not a bet. Out players are off the board.`,
-      `The cash number is the line we would buy. It is not a DraftKings or PrizePicks print. ${legs.length ? `Shop card uses ${legs.map((leg) => markets[leg.market]).join(", ")}.` : "No two-game card cleared the minute cut."}`,
+      `The cash number is the line we would buy. It is not a DraftKings or PrizePicks print. The finder hit rates are against the half-point under the projection, split into last regular season and this preseason. ${legs.length ? `Shop card uses ${legs.map((leg) => markets[leg.market]).join(", ")}.` : "No two-game card cleared the minute cut."}`,
     ],
   };
 }

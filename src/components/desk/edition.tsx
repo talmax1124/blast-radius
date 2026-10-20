@@ -15,7 +15,7 @@ export function Folio({ copy }: { copy: EditionCopy }) {
   );
 }
 
-export function Nameplate({ sport = "mlb" }: { sport?: "mlb" | "nfl" | "nba" | "nhl" | "board" }) {
+export function Nameplate({ sport = "mlb" }: { sport?: "mlb" | "nfl" | "nba" | "nhl" | "board" | "finder" }) {
   const kicker =
     sport === "nfl"
       ? "Goal line desk"
@@ -27,7 +27,7 @@ export function Nameplate({ sport = "mlb" }: { sport?: "mlb" | "nfl" | "nba" | "
             ? "Daily board"
             : "Home run desk";
   const league = sport === "nfl" ? "NFL" : sport === "nba" ? "NBA" : sport === "nhl" ? "NHL" : sport === "board" ? "ALL" : "MLB";
-  const link = (id: "mlb" | "nfl" | "nba" | "nhl" | "board", href: string, label: string) => (
+  const link = (id: "mlb" | "nfl" | "nba" | "nhl" | "board" | "finder", href: string, label: string) => (
     <a href={href} className={sport === id ? "text-fg" : "text-faint hover:text-fg"}>
       {label}
     </a>
@@ -57,6 +57,8 @@ export function Nameplate({ sport = "mlb" }: { sport?: "mlb" | "nfl" | "nba" | "
         {link("nba", "/nba", "NBA")}
         <span className="text-faint">/</span>
         {link("nhl", "/nhl", "NHL")}
+        <span className="text-faint">/</span>
+        {link("finder", "/finder", "Finder")}
       </p>
     </div>
   );
