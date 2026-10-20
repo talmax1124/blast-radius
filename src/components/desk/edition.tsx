@@ -15,52 +15,59 @@ export function Folio({ copy }: { copy: EditionCopy }) {
   );
 }
 
-export function Nameplate({ sport = "mlb" }: { sport?: "mlb" | "nfl" | "nba" | "nhl" | "board" | "finder" }) {
+export function Nameplate({ sport = "mlb" }: { sport?: "mlb" | "nfl" | "nba" | "nhl" | "soccer" | "board" | "finder" | "front" }) {
   const kicker =
     sport === "nfl"
-      ? "Goal line desk"
+      ? "Goal line"
       : sport === "nba"
-        ? "Minutes desk"
+        ? "Minutes"
         : sport === "nhl"
-          ? "Shot desk"
-          : sport === "board"
-            ? "Daily board"
-            : "Home run desk";
-  const league = sport === "nfl" ? "NFL" : sport === "nba" ? "NBA" : sport === "nhl" ? "NHL" : sport === "board" ? "ALL" : "MLB";
-  const link = (id: "mlb" | "nfl" | "nba" | "nhl" | "board" | "finder", href: string, label: string) => (
-    <a href={href} className={sport === id ? "text-fg" : "text-faint hover:text-fg"}>
-      {label}
-    </a>
-  );
+          ? "Shots"
+          : sport === "soccer"
+            ? "Touch"
+            : sport === "board"
+              ? "The book"
+              : sport === "finder"
+                ? "Hit rates"
+                : sport === "front"
+                  ? "Night desk"
+                  : "Home runs";
+  const links: { id: typeof sport; href: string; label: string }[] = [
+    { id: "board", href: "/board", label: "Board" },
+    { id: "mlb", href: "/mlb", label: "MLB" },
+    { id: "nfl", href: "/nfl", label: "NFL" },
+    { id: "nba", href: "/nba", label: "NBA" },
+    { id: "nhl", href: "/nhl", label: "NHL" },
+    { id: "soccer", href: "/soccer", label: "Soccer" },
+    { id: "finder", href: "/finder", label: "Finder" },
+  ];
   return (
-    <div className="nameplate py-5 text-center sm:py-6">
-      <p className="kicker">{kicker}</p>
-      <h1 className="font-display mt-1 font-semibold tracking-tight">
-        <span
-          className={
-            sport === "board"
-              ? "block text-xs font-medium tracking-[0.28em] text-stone"
-              : "block text-[0.32em] font-medium tracking-[0.42em] text-stone"
-          }
-        >
-          {league}
-        </span>
-        <span className={sport === "board" ? "text-5xl sm:text-6xl" : "text-display"}>GREAT RUN</span>
-      </h1>
-      <p className="kicker mt-3 flex flex-wrap items-center justify-center gap-3">
-        {link("board", "/board", "Board")}
-        <span className="text-faint">/</span>
-        {link("mlb", "/", "MLB")}
-        <span className="text-faint">/</span>
-        {link("nfl", "/nfl", "NFL")}
-        <span className="text-faint">/</span>
-        {link("nba", "/nba", "NBA")}
-        <span className="text-faint">/</span>
-        {link("nhl", "/nhl", "NHL")}
-        <span className="text-faint">/</span>
-        {link("finder", "/finder", "Finder")}
-      </p>
-    </div>
+    <header className="border-b border-border pb-4">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="kicker">{kicker}</p>
+          <a href="/" className="font-display mt-1 block text-4xl leading-none font-semibold tracking-tight text-fg sm:text-5xl">
+            GREAT RUN
+          </a>
+        </div>
+        <p className="kicker hidden sm:block">{sport === "front" ? "Five sports" : sport.toUpperCase()}</p>
+      </div>
+      <nav className="mt-4 flex gap-1 overflow-x-auto">
+        {links.map((item) => (
+          <a
+            key={item.href}
+            href={item.href}
+            className={
+              sport === item.id
+                ? "border-b-2 border-fg px-3 py-2 text-sm font-medium text-fg"
+                : "border-b-2 border-transparent px-3 py-2 text-sm text-faint hover:text-fg"
+            }
+          >
+            {item.label}
+          </a>
+        ))}
+      </nav>
+    </header>
   );
 }
 

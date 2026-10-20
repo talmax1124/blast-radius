@@ -4,7 +4,7 @@ import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { AppProviders } from "@/components/providers";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "MLB GREAT RUN";
+const APP_NAME = "GREAT RUN";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -15,7 +15,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "MLB home-run desk. Daily Great Run board, PrizePicks 2/3/6, Statcast barrels, and graded slips.",
+          "Night desk. Baseball, the goal line, minutes, shots, and soccer. The number is ours.",
       },
       { name: "theme-color", content: "#070807" },
     ],

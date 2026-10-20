@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BoardRouteImport } from './routes/board'
 import { Route as FinderRouteImport } from './routes/finder'
+import { Route as MlbRouteImport } from './routes/mlb'
 import { Route as NbaRouteImport } from './routes/nba'
 import { Route as NflRouteImport } from './routes/nfl'
 import { Route as NhlRouteImport } from './routes/nhl'
+import { Route as SoccerRouteImport } from './routes/soccer'
 import { Route as ApiDeskTickRouteImport } from './routes/api/desk.tick'
 
 const IndexRoute = IndexRouteImport.update({
@@ -32,6 +34,11 @@ const FinderRoute = FinderRouteImport.update({
   path: '/finder',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MlbRoute = MlbRouteImport.update({
+  id: '/mlb',
+  path: '/mlb',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NbaRoute = NbaRouteImport.update({
   id: '/nba',
   path: '/nba',
@@ -47,6 +54,11 @@ const NhlRoute = NhlRouteImport.update({
   path: '/nhl',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SoccerRoute = SoccerRouteImport.update({
+  id: '/soccer',
+  path: '/soccer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDeskTickRoute = ApiDeskTickRouteImport.update({
   id: '/api/desk/tick',
   path: '/api/desk/tick',
@@ -57,18 +69,22 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/board': typeof BoardRoute
   '/finder': typeof FinderRoute
+  '/mlb': typeof MlbRoute
   '/nba': typeof NbaRoute
   '/nfl': typeof NflRoute
   '/nhl': typeof NhlRoute
+  '/soccer': typeof SoccerRoute
   '/api/desk/tick': typeof ApiDeskTickRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/board': typeof BoardRoute
   '/finder': typeof FinderRoute
+  '/mlb': typeof MlbRoute
   '/nba': typeof NbaRoute
   '/nfl': typeof NflRoute
   '/nhl': typeof NhlRoute
+  '/soccer': typeof SoccerRoute
   '/api/desk/tick': typeof ApiDeskTickRoute
 }
 export interface FileRoutesById {
@@ -76,25 +92,46 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/board': typeof BoardRoute
   '/finder': typeof FinderRoute
+  '/mlb': typeof MlbRoute
   '/nba': typeof NbaRoute
   '/nfl': typeof NflRoute
   '/nhl': typeof NhlRoute
+  '/soccer': typeof SoccerRoute
   '/api/desk/tick': typeof ApiDeskTickRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/board' | '/finder' | '/nba' | '/nfl' | '/nhl' | '/api/desk/tick'
+    | '/'
+    | '/board'
+    | '/finder'
+    | '/mlb'
+    | '/nba'
+    | '/nfl'
+    | '/nhl'
+    | '/soccer'
+    | '/api/desk/tick'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/board' | '/finder' | '/nba' | '/nfl' | '/nhl' | '/api/desk/tick'
+  to:
+    | '/'
+    | '/board'
+    | '/finder'
+    | '/mlb'
+    | '/nba'
+    | '/nfl'
+    | '/nhl'
+    | '/soccer'
+    | '/api/desk/tick'
   id:
     | '__root__'
     | '/'
     | '/board'
     | '/finder'
+    | '/mlb'
     | '/nba'
     | '/nfl'
     | '/nhl'
+    | '/soccer'
     | '/api/desk/tick'
   fileRoutesById: FileRoutesById
 }
@@ -102,9 +139,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BoardRoute: typeof BoardRoute
   FinderRoute: typeof FinderRoute
+  MlbRoute: typeof MlbRoute
   NbaRoute: typeof NbaRoute
   NflRoute: typeof NflRoute
   NhlRoute: typeof NhlRoute
+  SoccerRoute: typeof SoccerRoute
   ApiDeskTickRoute: typeof ApiDeskTickRoute
 }
 
@@ -131,6 +170,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mlb': {
+      id: '/mlb'
+      path: '/mlb'
+      fullPath: '/mlb'
+      preLoaderRoute: typeof MlbRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/nba': {
       id: '/nba'
       path: '/nba'
@@ -152,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NhlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/soccer': {
+      id: '/soccer'
+      path: '/soccer'
+      fullPath: '/soccer'
+      preLoaderRoute: typeof SoccerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/desk/tick': {
       id: '/api/desk/tick'
       path: '/api/desk/tick'
@@ -166,9 +219,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BoardRoute: BoardRoute,
   FinderRoute: FinderRoute,
+  MlbRoute: MlbRoute,
   NbaRoute: NbaRoute,
   NflRoute: NflRoute,
   NhlRoute: NhlRoute,
+  SoccerRoute: SoccerRoute,
   ApiDeskTickRoute: ApiDeskTickRoute,
 }
 export const routeTree = rootRouteImport

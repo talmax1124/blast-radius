@@ -1,8 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppDesk } from "@/components/desk/app-desk";
+import { FrontDesk } from "@/components/desk/front-desk";
 
-export const Route = createFileRoute("/")({ component: Home });
-
-function Home() {
-  return <AppDesk />;
-}
+export const Route = createFileRoute("/")({ component: FrontDesk });
