@@ -1,4 +1,4 @@
-import { buildCard, projectPlayer, RIM, type Market, type Pos } from "./score.ts";
+import { buildCard, defenseFactor, gamesFromLog, isBackToBack, projectPlayer, recentForm, RIM, type Market, type Pos } from "./score.ts";
 import type { NbaActual, NbaBoard, NbaGame, NbaPlayer } from "./types.ts";
 
 const UA = "GreatRun/NBA-1.0";
@@ -85,7 +85,10 @@ function weigh(rows: { gp: number; min: number; pts: number; reb: number; ast: n
   return { gp, min: avg("min"), pts: avg("pts"), reb: avg("reb"), ast: avg("ast"), threes: avg("threes") };
 }
 
-async function loadAthlete(id: string): Promise<ReturnType<typeof weigh> & { careerGp: number; career: ReturnType<typeof weigh> } | null> {
+async function loadAthlete(
+  id: string,
+  seasonYear: number,
+): Promise<{ season: ReturnType<typeof weigh>; careerGp: number; career: ReturnType<typeof weigh> } | null> {
   try {
     const data = await cached(`nba:stats:${id}`, 6 * 60 * 60 * 1000, () => getJson<AthleteStats>(`${STATS}/${id}/stats`));
     const avg = data.categories?.find((c) => c.name === "averages");
@@ -100,14 +103,47 @@ async function loadAthlete(id: string): Promise<ReturnType<typeof weigh> & { car
         ast: num(row.stats ?? [], names, "avgAssists"),
         threes: num(row.stats ?? [], names, "avgThreePointFieldGoalsMade-avgThreePointFieldGoalsAttempted"),
       }))
-      .filter((row) => row.gp > 0 && row.year > 0);
+      .filter((row) => row.gp > 0 && row.year > 0 && row.year < seasonYear);
     if (!rows.length) return null;
-    const year = Math.max(...rows.map((row) => row.year));
-    const season = weigh(rows.filter((row) => row.year === year));
-    const career = weigh(rows);
-    return { ...season, careerGp: career.gp, career };
+    const lastYear = Math.max(...rows.map((row) => row.year));
+    const season = weigh(rows.filter((row) => row.year === lastYear));
+    const career = weigh(rows.filter((row) => row.year < lastYear));
+    return { season, careerGp: career.gp, career };
   } catch {
     return null;
+  }
+}
+
+async function loadForm(id: string, seasonYear: number) {
+  try {
+    const data = await cached(`nba:log:${seasonYear}:${id}`, 6 * 60 * 60 * 1000, () =>
+      getJson<Parameters<typeof gamesFromLog>[0]>(`${STATS}/${id}/gamelog?season=${seasonYear}`),
+    );
+    return gamesFromLog(data);
+  } catch {
+    return [];
+  }
+}
+
+async function loadDefense(): Promise<{ seasonYear: number; byTeam: Map<string, number>; league: number }> {
+  try {
+    const data = await getJson<{
+      season?: { year?: number };
+      children?: { standings?: { entries?: { team?: { id?: string }; stats?: { name?: string; value?: number }[] }[] } }[];
+    }>("https://site.api.espn.com/apis/v2/sports/basketball/nba/standings");
+    const byTeam = new Map<string, number>();
+    for (const child of data.children ?? []) {
+      for (const entry of child.standings?.entries ?? []) {
+        const id = entry.team?.id;
+        const allowed = entry.stats?.find((stat) => stat.name === "avgPointsAgainst")?.value;
+        if (id && allowed && allowed > 0) byTeam.set(id, allowed);
+      }
+    }
+    const values = [...byTeam.values()];
+    const league = values.length ? values.reduce((sum, n) => sum + n, 0) / values.length : 0;
+    return { seasonYear: data.season?.year ?? 2027, byTeam, league };
+  } catch {
+    return { seasonYear: 2027, byTeam: new Map(), league: 0 };
   }
 }
 
@@ -168,16 +204,19 @@ export async function buildNbaBoard(now = new Date()): Promise<NbaBoard> {
 }
 
 async function loadBoard(ymd: string, date: string): Promise<NbaBoard> {
-  const scoreboard = await getJson<{
-    events?: {
-      id?: string;
-      date?: string;
-      competitions?: {
-        status?: { type?: { state?: string } };
-        competitors?: { homeAway?: string; team?: { id?: string; abbreviation?: string; displayName?: string } }[];
+  const [scoreboard, defense] = await Promise.all([
+    getJson<{
+      events?: {
+        id?: string;
+        date?: string;
+        competitions?: {
+          status?: { type?: { state?: string } };
+          competitors?: { homeAway?: string; team?: { id?: string; abbreviation?: string; displayName?: string } }[];
+        }[];
       }[];
-    }[];
-  }>(`${ESPN}/scoreboard?dates=${ymd}`);
+    }>(`${ESPN}/scoreboard?dates=${ymd}`),
+    loadDefense(),
+  ]);
 
   const games: NbaGame[] = [];
   const jobs: { game: NbaGame; side: Side }[] = [];
@@ -195,6 +234,7 @@ async function loadBoard(ymd: string, date: string): Promise<NbaBoard> {
       awayName: away.team.displayName ?? "Away",
       homeName: home.team.displayName ?? "Home",
       start: event.date ? etClock(event.date) : "",
+      tip: event.date ?? "",
       state,
     };
     games.push(game);
@@ -218,22 +258,38 @@ async function loadBoard(ymd: string, date: string): Promise<NbaBoard> {
   });
 
   const fetched = await mapPool(rosters.flatMap((roster) => roster.athletes.map((athlete) => ({ roster, athlete }))), 8, async ({ roster, athlete }) => {
-    const stats = await loadAthlete(athlete.id!);
-    return { roster, athlete, stats };
+    const [stats, games] = await Promise.all([
+      loadAthlete(athlete.id!, defense.seasonYear),
+      loadForm(athlete.id!, defense.seasonYear),
+    ]);
+    return { roster, athlete, stats, games };
   });
 
+  const empty = { gp: 0, min: 0, pts: 0, reb: 0, ast: 0, threes: 0 };
+  const seasonStarted = fetched.some((row) => recentForm(row.games).gp > 0);
   const players: NbaPlayer[] = [];
   for (const row of fetched) {
-    if (!row.stats || row.stats.gp < 1) continue;
+    const form = recentForm(row.games);
+    const season = row.stats?.season ?? empty;
+    const career = row.stats?.career ?? empty;
+    if (season.gp < 1 && form.gp < 1) continue;
     const { job } = row.roster;
     const opp = job.side.home ? job.game.away : job.game.home;
+    const oppId = jobs.find((item) => item.game.id === job.game.id && item.side.id !== job.side.id)?.side.id ?? "";
+    const allowed = seasonStarted ? (defense.byTeam.get(oppId) ?? 0) : 0;
+    const factor = defenseFactor(allowed, defense.league);
+    const backToBack = isBackToBack(form.lastDate, job.game.tip);
     const projected = projectPlayer({
       pos: posOf(row.athlete.position?.abbreviation ?? "G"),
-      gp: row.stats.gp,
-      season: row.stats,
-      careerGp: row.stats.careerGp,
-      career: row.stats.career,
+      gp: season.gp,
+      season,
+      careerGp: row.stats?.careerGp ?? 0,
+      career,
       home: job.side.home,
+      recent: form.line,
+      recentGp: form.gp,
+      defense: factor,
+      backToBack,
     });
     if (projected.minutes < 18) continue;
     const actual = boxes.get(job.game.id)?.get(row.athlete.id!) ?? null;
@@ -247,8 +303,11 @@ async function loadBoard(ymd: string, date: string): Promise<NbaBoard> {
       home: job.side.home,
       gameId: job.game.id,
       start: job.game.start,
-      gp: row.stats.gp,
+      gp: season.gp,
+      formGp: form.gp,
       minutes: projected.minutes,
+      defense: factor,
+      backToBack,
       quotes: projected.quotes,
       actual,
     });
@@ -287,7 +346,7 @@ async function loadBoard(ymd: string, date: string): Promise<NbaBoard> {
         }
       : null,
     notes: [
-      `${RIM.name} ${RIM.version}. Minutes and per-minute rates shrink toward a position prior with a ${RIM.shrinkGames}-game weight. Home scoring and threes get 2%.`,
+      `${RIM.name} ${RIM.version}. Last year's regular season is the base, pulled toward the years before it. This year's regular-season games move it, with an ${RIM.formGames}-game weight. Preseason and the playoffs do not. Opponent points allowed apply only after a regular-season sample exists, and the move is capped at 8%. A back-to-back takes 4% off the minutes.`,
       `An over is live only if six minutes off still covers a number close to the projection. An under is live only if four extra minutes still leave it a dog, and that number is still close. A 0.5 three is not a bet. Out players are off the board.`,
       `The cash number is the line we would buy. It is not a DraftKings or PrizePicks print. ${legs.length ? `Shop card uses ${legs.map((leg) => markets[leg.market]).join(", ")}.` : "No two-game card cleared the minute cut."}`,
     ],

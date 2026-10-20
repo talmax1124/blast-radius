@@ -10,14 +10,16 @@ export type Pos = "G" | "F" | "C";
 export type Market = "pts" | "reb" | "ast" | "threes" | "pra";
 
 export const RIM = {
-  version: "1.0",
+  version: "1.1",
   name: "Minutes Mass",
   shrinkGames: 10,
+  formGames: 8,
   minuteCut: 6,
   minuteSpike: 4,
   minAfter: 0.55,
   maxOverAfter: 0.46,
   floorMinutes: 8,
+  b2bMinutes: 0.96,
 } as const;
 
 const PRIOR: Record<Pos, { min: number; pts: number; reb: number; ast: number; threes: number }> = {
@@ -49,6 +51,81 @@ export function shrink(season: number, prior: number, gp: number, k = RIM.shrink
   const played = Math.max(0, gp);
   const w = played / (played + k);
   return w * Math.max(0, season) + (1 - w) * Math.max(0, prior);
+}
+
+/** Opponent points allowed, clamped. Five games of a bad defense is not a 20% boost. */
+export function defenseFactor(pointsAllowed: number, leagueAllowed: number): number {
+  if (!(pointsAllowed > 0) || !(leagueAllowed > 0)) return 1;
+  return Math.min(1.08, Math.max(0.92, pointsAllowed / leagueAllowed));
+}
+
+export type LoggedGame = {
+  min: number;
+  pts: number;
+  reb: number;
+  ast: number;
+  threes: number;
+  date: string;
+  preseason: boolean;
+};
+
+/** Regular-season games only. Preseason and the playoffs do not move the rate. */
+export function recentForm(games: LoggedGame[]): { line: Line; gp: number; lastDate: string | null } {
+  const dated = games.filter((game) => game.date);
+  const last = dated.sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+  const reg = games.filter((game) => !game.preseason && game.min > 0);
+  if (!reg.length) return { line: { min: 0, pts: 0, reb: 0, ast: 0, threes: 0 }, gp: 0, lastDate: last?.date ?? null };
+  const gp = reg.length;
+  const avg = (key: "min" | "pts" | "reb" | "ast" | "threes") => reg.reduce((sum, game) => sum + game[key], 0) / gp;
+  return { line: { min: avg("min"), pts: avg("pts"), reb: avg("reb"), ast: avg("ast"), threes: avg("threes") }, gp, lastDate: last?.date ?? null };
+}
+
+export function isBackToBack(lastDate: string | null, tipIso: string): boolean {
+  if (!lastDate) return false;
+  const last = Date.parse(lastDate);
+  const tip = Date.parse(tipIso);
+  if (!Number.isFinite(last) || !Number.isFinite(tip)) return false;
+  const hours = (tip - last) / 36e5;
+  return hours > 0 && hours < 36;
+}
+
+function cellOf(stats: string[], names: string[], key: string): number {
+  const i = names.indexOf(key);
+  if (i < 0) return 0;
+  const n = Number(String(stats[i] ?? "").split("-")[0]);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Regular season counts. Preseason and playoffs are dropped before the rate is touched. */
+export function gamesFromLog(input: {
+  names?: string[];
+  seasonTypes?: { displayName?: string; categories?: { events?: { eventId?: string; stats?: string[] }[] }[] }[];
+  events?: Record<string, { gameDate?: string }>;
+}): LoggedGame[] {
+  const names = input.names ?? [];
+  const games: LoggedGame[] = [];
+  for (const type of input.seasonTypes ?? []) {
+    const label = (type.displayName ?? "").toLowerCase();
+    if (label.includes("post")) continue;
+    const preseason = !label.includes("regular");
+    for (const category of type.categories ?? []) {
+      for (const event of category.events ?? []) {
+        const stats = event.stats ?? [];
+        const min = cellOf(stats, names, "minutes");
+        if (!(min > 0)) continue;
+        games.push({
+          min,
+          pts: cellOf(stats, names, "points"),
+          reb: cellOf(stats, names, "totalRebounds"),
+          ast: cellOf(stats, names, "assists"),
+          threes: cellOf(stats, names, "threePointFieldGoalsMade-threePointFieldGoalsAttempted"),
+          date: (event.eventId && input.events?.[event.eventId]?.gameDate) || "",
+          preseason,
+        });
+      }
+    }
+  }
+  return games;
 }
 
 export function normCdf(z: number): number {
@@ -143,27 +220,43 @@ export function projectPlayer(input: {
   careerGp: number;
   career: Line;
   home: boolean;
+  recent?: Line | null;
+  recentGp?: number;
+  defense?: number;
+  backToBack?: boolean;
 }): { minutes: number; quotes: Record<Market, Quote> } {
   const prior = PRIOR[input.pos];
   const careerMin = input.career.min > 0 ? input.career.min : prior.min;
   const seasonMin = input.season.min > 0 ? input.season.min : careerMin;
-  const minutes = shrink(seasonMin, shrink(careerMin, prior.min, input.careerGp), input.gp);
-  const rate = (key: "pts" | "reb" | "ast" | "threes") => {
+  let minutes = shrink(seasonMin, shrink(careerMin, prior.min, input.careerGp), input.gp);
+  const rateOf = (key: "pts" | "reb" | "ast" | "threes") => {
     const careerRate = perMinute(input.career[key], input.career.min, prior[key]);
     const seasonRate = perMinute(input.season[key], input.season.min, careerRate);
     return shrink(seasonRate, shrink(careerRate, prior[key], input.careerGp), input.gp);
   };
-  const venue = input.home ? 1.02 : 0.98;
-  const pts = rate("pts");
-  const reb = rate("reb");
-  const ast = rate("ast");
-  const threes = rate("threes");
+  let pts = rateOf("pts");
+  let reb = rateOf("reb");
+  let ast = rateOf("ast");
+  let threes = rateOf("threes");
+  const recentGp = input.recentGp ?? 0;
+  if (recentGp > 0 && input.recent && input.recent.min > 0) {
+    minutes = shrink(input.recent.min, minutes, recentGp, RIM.formGames);
+    const mix = (base: number, total: number) => shrink(perMinute(total, input.recent!.min, base), base, recentGp, RIM.formGames);
+    pts = mix(pts, input.recent.pts);
+    reb = mix(reb, input.recent.reb);
+    ast = mix(ast, input.recent.ast);
+    threes = mix(threes, input.recent.threes);
+  }
+  if (input.backToBack) minutes *= RIM.b2bMinutes;
+  const defense = input.defense ?? 1;
+  const mild = 1 + (defense - 1) * 0.45;
+  const venue = (input.home ? 1.015 : 0.985) * defense;
   const quotes = {
     pts: quote("pts", minutes, pts, venue),
-    reb: quote("reb", minutes, reb, 1),
-    ast: quote("ast", minutes, ast, 1),
+    reb: quote("reb", minutes, reb, mild),
+    ast: quote("ast", minutes, ast, mild),
     threes: quote("threes", minutes, threes, venue),
-    pra: quote("pra", minutes, pts * venue + reb + ast, 1),
+    pra: quote("pra", minutes, pts * venue + reb * mild + ast * mild, 1),
   };
   return { minutes, quotes };
 }

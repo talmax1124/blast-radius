@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildCard, coverOver, projectPlayer, shrink } from "./score.ts";
+import { buildCard, coverOver, defenseFactor, gamesFromLog, isBackToBack, projectPlayer, recentForm, shrink } from "./score.ts";
 
 const line = { min: 36, pts: 28, reb: 8, ast: 6, threes: 3 };
 
@@ -91,5 +91,75 @@ describe("minutes mass", () => {
       { id: "b", name: "B", team: "BOS", gameId: "g1", minutes: 32, quotes: one.quotes },
     ]);
     assert.equal(card.length, 0);
+  });
+
+  it("lets five real games move a 20-point season without chasing them", () => {
+    const base = projectPlayer({
+      pos: "G",
+      gp: 70,
+      season: { min: 36, pts: 20, reb: 4, ast: 5, threes: 1.5 },
+      careerGp: 400,
+      career: { min: 36, pts: 20, reb: 4, ast: 5, threes: 1.5 },
+      home: true,
+    });
+    const hot = projectPlayer({
+      pos: "G",
+      gp: 70,
+      season: { min: 36, pts: 20, reb: 4, ast: 5, threes: 1.5 },
+      careerGp: 400,
+      career: { min: 36, pts: 20, reb: 4, ast: 5, threes: 1.5 },
+      home: true,
+      recentGp: 5,
+      recent: { min: 36, pts: 30, reb: 4, ast: 5, threes: 1.5 },
+    });
+    assert.ok(hot.quotes.pts.projection > base.quotes.pts.projection + 2);
+    assert.ok(hot.quotes.pts.projection < 27, `chased to ${hot.quotes.pts.projection}`);
+  });
+
+  it("caps a tiny-sample defense and cuts minutes on a back-to-back", () => {
+    assert.equal(defenseFactor(140, 110), 1.08);
+    assert.equal(defenseFactor(90, 110), 0.92);
+    const fresh = projectPlayer({
+      pos: "F",
+      gp: 40,
+      season: line,
+      careerGp: 400,
+      career: line,
+      home: true,
+    });
+    const tired = projectPlayer({
+      pos: "F",
+      gp: 40,
+      season: line,
+      careerGp: 400,
+      career: line,
+      home: true,
+      backToBack: true,
+    });
+    assert.ok(tired.minutes < fresh.minutes);
+    assert.ok(tired.quotes.pts.projection < fresh.quotes.pts.projection);
+  });
+
+  it("ignores preseason games and flags a next-day tip", () => {
+    const form = recentForm([
+      { min: 20, pts: 40, reb: 10, ast: 10, threes: 6, date: "2026-10-08T00:00:00Z", preseason: true },
+      { min: 34, pts: 22, reb: 5, ast: 6, threes: 2, date: "2026-10-18T00:00:00Z", preseason: false },
+    ]);
+    assert.equal(form.gp, 1);
+    assert.ok(form.line.pts < 25);
+    assert.equal(isBackToBack("2026-10-19T23:00:00Z", "2026-10-20T23:00:00Z"), true);
+    assert.equal(isBackToBack("2026-10-17T23:00:00Z", "2026-10-20T23:00:00Z"), false);
+    const parsed = gamesFromLog({
+      names: ["minutes", "points", "totalRebounds", "assists", "threePointFieldGoalsMade-threePointFieldGoalsAttempted"],
+      seasonTypes: [
+        { displayName: "2026-27 Preseason", categories: [{ events: [{ eventId: "p", stats: ["20", "30", "8", "8", "4-8"] }] }] },
+        { displayName: "2026-27 Regular Season", categories: [{ events: [{ eventId: "r", stats: ["34", "22", "5", "6", "2-6"] }] }] },
+        { displayName: "2026-27 Postseason", categories: [{ events: [{ eventId: "o", stats: ["40", "40", "10", "10", "5-8"] }] }] },
+      ],
+      events: { p: { gameDate: "2026-10-08T00:00:00Z" }, r: { gameDate: "2026-10-22T00:00:00Z" }, o: { gameDate: "2027-04-20T00:00:00Z" } },
+    });
+    const kept = recentForm(parsed);
+    assert.equal(kept.gp, 1);
+    assert.equal(kept.line.pts, 22);
   });
 });

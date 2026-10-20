@@ -7,6 +7,7 @@ export type NbaGame = {
   awayName: string;
   homeName: string;
   start: string;
+  tip: string;
   state: "pre" | "in" | "post";
 };
 
@@ -30,7 +31,10 @@ export type NbaPlayer = {
   gameId: string;
   start: string;
   gp: number;
+  formGp: number;
   minutes: number;
+  defense: number;
+  backToBack: boolean;
   quotes: Record<Market, Quote>;
   actual: NbaActual | null;
 };

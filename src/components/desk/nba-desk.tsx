@@ -225,6 +225,9 @@ function PlayerRow({ player, index, market }: { player: NbaPlayer; index: number
       </div>
       <p className="mt-1 text-sm text-muted">
         {player.team} vs {player.opp} · {player.pos} · {num1(player.minutes)} min
+        {player.formGp > 0 ? ` · ${player.formGp} this year` : player.gp > 0 ? ` · ${player.gp} last year` : ""}
+        {player.backToBack ? " · b2b" : ""}
+        {player.defense !== 1 ? ` · opp ${player.defense.toFixed(2)}` : ""}
       </p>
       <p className="mt-1 text-xs tabular-nums text-faint">
         {num1(quote.projection)} projected
