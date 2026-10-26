@@ -110,3 +110,12 @@ describe("Allen floor", () => {
     assert.equal(survivesSpike("pass", 180, 260.5, "QB"), true);
   });
 });
+
+describe("zero-catch mass", () => {
+  it("never prices a yards over above the chance of one catch", async () => {
+    const { quoteCover } = await import("./slips.ts");
+    const pick = { pos: "WR", expRec: 0.85, expRecYd: 9.9, expRushAtt: 0, expRushYd: 0 } as unknown as NflPick;
+    const p = quoteCover(pick, "recyd", 0.5);
+    assert.ok(p <= 1 - Math.exp(-0.85) + 1e-9);
+  });
+});
