@@ -99,17 +99,25 @@ export function NbaDesk() {
         <p className="kicker">Book</p>
         <ul className="mt-2 flex flex-col gap-1">
           {BOOK.map((card) => (
-            <li key={card.title} className="text-sm text-muted">
+            <li key={`${card.date}-${card.title}`} className="text-sm text-muted">
               <span className="text-fg">{card.date}</span>
               <span> {card.title} </span>
-              <span className={card.result === "hit" ? "text-pine" : "text-brick"}>{card.result}</span>
+              <span className={card.result === "hit" ? "text-pine" : card.result === "open" ? "text-faint" : "text-brick"}>
+                {card.result}
+              </span>
               <span className="text-faint">
                 {" "}
-                · {card.legs.filter((leg) => leg.result === "hit").length}/{card.legs.length}
+                · {card.legs.filter((leg) => leg.result === "hit").length}/{card.legs.filter((leg) => leg.result !== "open").length || card.legs.length}
                 {card.legs
                   .filter((leg) => leg.result === "miss")
                   .map((leg) => ` · ${leg.name.split(" ").slice(-1)[0]} ${leg.actual}`)
                   .join("")}
+                {card.legs.some((leg) => leg.result === "open")
+                  ? ` · open ${card.legs
+                      .filter((leg) => leg.result === "open")
+                      .map((leg) => leg.name.split(" ").slice(-1)[0])
+                      .join(", ")}`
+                  : ""}
               </span>
             </li>
           ))}
