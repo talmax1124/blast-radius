@@ -5,6 +5,7 @@ import { pAtLeast, pEvent } from "./score.ts";
  * Carolina won 4-1 and the three legs still lost:
  * Blake assist 0 (he had 4 shots), Svechnikov 1 shot on a back-to-back,
  * Chychrun did not score. Aho's point cashed. A goal price is not a cash leg.
+ * Oct 25: MacKinnon at 1.82 points a game went over 1.5 as if it were any point. He finished with one.
  */
 const MARKET = { shot: 0, point: 0.15, assist: -0.9, goal: -1.6 } as const;
 
@@ -16,7 +17,8 @@ export function cashLogit(input: {
   line: number;
   b2b?: boolean;
 }): number {
-  const k = input.market === "shot" ? input.line + 0.5 : input.market === "point" ? 0.45 : 1;
+  const multiPoint = input.market === "point" && input.line >= 1;
+  const k = input.market === "shot" ? input.line + 0.5 : input.market === "point" ? (multiPoint ? input.line + 0.5 : 0.45) : 1;
   const cushion = input.lambda - k;
   const rest = input.b2b ? (input.market === "point" ? -0.35 : -0.55) : 0;
   return -0.15 + 1.35 * cushion + MARKET[input.market] + rest;
@@ -38,7 +40,7 @@ export function clearsCashGate(input: {
 
 export function legProbability(market: CashMarket, lambda: number, line: number): number {
   if (market === "shot") return pAtLeast(lambda, line + 0.5);
-  if (market === "point") return pEvent(lambda);
+  if (market === "point") return pAtLeast(lambda, line + 0.5);
   if (market === "goal") return pEvent(lambda);
   return pEvent(lambda);
 }

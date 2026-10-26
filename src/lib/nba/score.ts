@@ -11,12 +11,14 @@ export type Pos = "G" | "F" | "C";
 export type Market = "pts" | "reb" | "ast" | "threes" | "pra";
 
 export const RIM = {
-  version: "1.2",
+  version: "1.3",
   name: "Minutes Mass",
   shrinkGames: 10,
   formGames: 8,
   preGames: 16,
   minuteCut: 6,
+  /** Points and PRA die when the night is only this share of the minutes. A 17-minute foul night is not a 6-minute trim. */
+  pointKeep: 0.62,
   minuteSpike: 4,
   minAfter: 0.55,
   maxOverAfter: 0.46,
@@ -183,6 +185,11 @@ function minLine(market: Market): number {
   return 12.5;
 }
 
+function shockedMinutes(minutes: number, market: Market): number {
+  if (market === "pts" || market === "pra") return Math.max(RIM.floorMinutes, minutes * RIM.pointKeep);
+  return Math.max(RIM.floorMinutes, minutes - RIM.minuteCut);
+}
+
 function cashOver(mean: number, shocked: number, market: Market): { line: number; cover: number } | null {
   let line = Math.floor(mean) + 0.5;
   for (let i = 0; i < 40 && line >= 0.5; i++) {
@@ -204,7 +211,7 @@ function cashUnder(mean: number, spiked: number, market: Market): number | null 
 
 function quote(market: Market, minutes: number, rate: number, venue: number): Quote {
   const mean = minutes * rate * venue;
-  const shockedMin = Math.max(RIM.floorMinutes, minutes - RIM.minuteCut);
+  const shockedMin = shockedMinutes(minutes, market);
   const shocked = shockedMin * rate * venue;
   const spiked = (minutes + RIM.minuteSpike) * rate * venue;
   const over = cashOver(mean, shocked, market);

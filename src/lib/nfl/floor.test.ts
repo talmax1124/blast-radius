@@ -4,7 +4,17 @@ import { buildSlips, survivesShock, survivesSpike } from "./slips.ts";
 import type { NflPick, NflQuote } from "./types.ts";
 
 describe("Allen floor", () => {
-  it("rejects a pass line that dies when the quarterback is 32 yards light", () => {
+  it("rejects a backup pass over on a 20-point team", () => {
+    assert.equal(survivesShock("pass", 297, 213.5, "QB", 19.5), false);
+    assert.equal(survivesShock("recyd", 87, 78.5, "WR"), false);
+  });
+
+  it("rejects a pass over the implied total cannot carry", () => {
+    assert.equal(survivesShock("pass", 240, 216.5, "QB", 19.8), false);
+    assert.equal(survivesShock("pass", 275, 189.5, "QB", 27), true);
+  });
+
+  it("rejects a pass line that dies when the quarterback is a short night light", () => {
     assert.equal(survivesShock("pass", 275, 242.5, "QB"), false);
     assert.equal(survivesShock("pass", 275, 189.5, "QB"), true);
   });

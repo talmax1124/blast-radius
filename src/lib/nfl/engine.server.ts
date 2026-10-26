@@ -118,11 +118,12 @@ function injuryMult(status: unknown): number {
   return 1;
 }
 
-/** Official tag is still doubtful. He did not practice and is not in the game plan. */
-const RULED_OUT = new Set(["Puka Nacua"]);
-
-function applySits(people: Person[]): Person[] {
-  return people.map((p) => (RULED_OUT.has(p.name) ? { ...p, injury: 0, status: "Out" } : p));
+function applySits(people: Person[], lines: PpLine[]): Person[] {
+  return people.map((p) => {
+    const priced = lines.some((line) => sameName(p.name, line.name));
+    if (priced && p.injury <= 0) return { ...p, injury: 0.82, status: "Questionable" };
+    return p;
+  });
 }
 
 type Person = {
@@ -616,9 +617,10 @@ function leanOf(
   cover: number | null,
   playable: boolean,
   pos: string,
+  implied = 0,
 ): PropLean {
   if (!playable || cover == null || line == null) return "no play";
-  if (market !== "atd" && market !== "passtd" && !survivesShock(market, projection, line, pos)) {
+  if (market !== "atd" && market !== "passtd" && !survivesShock(market, projection, line, pos, implied)) {
     return survivesSpike(market, projection, line, pos) ? "under" : "thin";
   }
   if (cover >= 0.57) return "over";
@@ -647,7 +649,7 @@ function sheetProps(pick: NflPick): ListedProp[] {
       projection,
       line: quote?.line ?? null,
       cover: quote?.cover ?? null,
-      lean: leanOf(market, projection, quote?.line ?? null, quote?.cover ?? null, playable, pick.pos),
+      lean: leanOf(market, projection, quote?.line ?? null, quote?.cover ?? null, playable, pick.pos, pick.implied),
     });
   }
   return out;
@@ -703,7 +705,7 @@ function buildMatch(
     total: game.total,
     venue: game.venue,
     weather,
-    note: "Fit on weeks 1–2 only. Tonight’s box does not train the card. Puka Nacua is out — he did not practice, and the doubtful tag is priced as inactive. His week-1 role moves in full, by actual target share. A QB rush over has to survive a 45% carry cut, not a 15-yard haircut. An under has to sit past a hot night — pass +64 yards, one extra catch — and still be a dog to the number. A receiving-yard over needs 26 yards of room. Questionable keeps 82%. Over and under are standard lines inside a sane band. A short or goblin number can show an edge and still read Pass.",
+    note: "A player the board is still pricing is questionable, not out, so his routes are not vacated. A dog throws more, not a third more. A QB rush over has to survive a 45% carry cut. An under has to sit past a hot night, and a receiving-yard over needs 20 yards of room. Questionable keeps 82%. Over and under are standard lines inside a sane band.",
     players,
   };
 }
@@ -727,7 +729,7 @@ export async function buildNflBoard(date = todayEt()): Promise<NflBoard> {
     ),
   ]);
 
-  const people = applySits(rosterFeed);
+  const people = applySits(rosterFeed, lines);
   const latest = Math.max(1, ...priorWeeks);
   const teamWeek = new Map<string, Map<number, WeekLine>>();
   const playerWeeks = new Map<string, { week: number; line: WeekLine }[]>();
@@ -961,7 +963,7 @@ export async function buildNflBoard(date = todayEt()): Promise<NflBoard> {
       : "PrizePicks did not answer. Power, Core, and Flex are skips — not losses.",
     `Anytime λ mixes a finish channel and an explosive channel, then P = 1 − e^(−λ). Six pseudo-games shrink a two-week TD rate back toward the league.`,
     night
-      ? `${night.away} at ${night.home} is priced on its own card. Puka Nacua is out, so his routes are reseated. Mile High lifts the throws.`
+      ? `${night.away} at ${night.home} is priced on its own card.`
       : "Rams at Broncos is not on this week’s scoreboard.",
   ];
 

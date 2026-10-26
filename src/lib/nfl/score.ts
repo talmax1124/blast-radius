@@ -11,13 +11,14 @@
  * Yards are lognormal. Receptions and multi-TD props are Poisson.
  * v1.5: a dog's pass volume gets a chase lift. A flat script was pricing
  * trailing quarterbacks off their season mean.
- * v1.6 retunes the cash filter. The mass model is unchanged.
+ * v1.8 will not buy a passing over the implied total cannot carry.
+ * A 20-point team does not throw for 216.
  */
 
 export type Pos = "QB" | "RB" | "WR" | "TE";
 
 export const RZM = {
-  version: "1.6",
+  version: "1.8",
   name: "Red-Zone Mass",
   phi: 0.62,
   tauGames: 6,
@@ -34,8 +35,8 @@ export const RZM = {
   recFinishFrac: 0.55,
   scriptRush: 0.2,
   scriptPass: -0.1,
-  /** Extra pass-attempt lift when script is negative. A +7 dog is not a 4% event. */
-  scriptChase: 0.35,
+  /** Extra pass-attempt lift when script is negative. A two-score dog throws more, not a third more. */
+  scriptChase: 0.15,
   totalRushExp: 0.55,
   totalPassExp: 0.7,
   calib: 0.74,

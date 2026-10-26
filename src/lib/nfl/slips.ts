@@ -9,11 +9,13 @@ const COUNTING: NflMarket[] = ["pass", "rush", "recyd", "rec"];
  * cash leg. The over has to still be a favorite after that kind of night.
  */
 export const ALLEN = {
-  passYards: 32,
-  recYards: 26,
-  rushYards: 15,
+  passYards: 26,
+  recYards: 20,
+  rushYards: 12,
   receptions: 1.5,
   minAfter: 0.55,
+  /** Passing yards one implied point can carry. Chiefs were implied near 20 on Oct 25 and the 216.5 over finished at 165. */
+  passPerPoint: 9.2,
 } as const;
 
 /**
@@ -42,8 +44,9 @@ export function shockedMean(market: NflMarket, projection: number, pos = ""): nu
   return projection;
 }
 
-export function survivesShock(market: NflMarket, projection: number, line: number, pos: string): boolean {
+export function survivesShock(market: NflMarket, projection: number, line: number, pos: string, implied = 0): boolean {
   if (market === "atd" || market === "passtd" || market === "fant") return false;
+  if (market === "pass" && implied > 0 && line > implied * ALLEN.passPerPoint) return false;
   const mean = shockedMean(market, projection, pos);
   if (!(mean > 0) || !(line > 0)) return false;
   if (market === "rec") return coverOver(mean, line, "count") >= ALLEN.minAfter;
@@ -179,9 +182,9 @@ function oddsPenalty(odds: OddsType): number {
   return 0;
 }
 
-function sane(quote: NflQuote, pos: string): boolean {
+function sane(quote: NflQuote, pos: string, implied = 0): boolean {
   if (quote.line <= 0) return false;
-  if (!survivesShock(quote.market, quote.projection, quote.line, pos)) return false;
+  if (!survivesShock(quote.market, quote.projection, quote.line, pos, implied)) return false;
   if (quote.market === "pass") return quote.oddsType === "standard" && quote.line >= 149 && quote.line <= 320 && quote.cover >= 0.62 && quote.cover <= 0.93;
   if (quote.market === "rush") return quote.oddsType === "standard" && quote.line >= 25 && quote.line <= 120 && quote.cover >= 0.62 && quote.cover <= 0.93;
   if (quote.market === "recyd") return quote.oddsType === "standard" && quote.line >= 12 && quote.line <= 120 && quote.cover >= 0.62 && quote.cover <= 0.93;
@@ -193,7 +196,7 @@ function candidates(picks: NflPick[]): Cand[] {
   const out: Cand[] = [];
   for (const pick of picks) {
     for (const quote of pick.quotes) {
-      if (!sane(quote, pick.pos)) continue;
+      if (!sane(quote, pick.pos, pick.implied)) continue;
       out.push({ pick, quote });
     }
   }

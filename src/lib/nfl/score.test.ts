@@ -68,6 +68,8 @@ describe("red-zone mass", () => {
     assert.ok(fav.rushTd > dog.rushTd);
     assert.ok(fav.passTd > dog.passTd);
     assert.ok(fav.rushAtt > dog.rushAtt);
+    assert.ok(dog.passAtt > fav.passAtt);
+    assert.ok(dog.passAtt / fav.passAtt < 1.2, `dog pass spike ${dog.passAtt / fav.passAtt}`);
   });
 
   it("reads a book spread into the implied total", () => {

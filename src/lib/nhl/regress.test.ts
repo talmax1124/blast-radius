@@ -9,6 +9,11 @@ describe("cash gate", () => {
     assert.equal(clearsCashGate({ market: "goal", lambda: 0.3, line: 0.5 }), false);
   });
 
+  it("rejects a 1.5-point over that is only a one-point rate", () => {
+    assert.equal(clearsCashGate({ market: "point", lambda: 1.82, line: 1.5 }), false);
+    assert.equal(clearsCashGate({ market: "point", lambda: 1.2, line: 0.5 }), true);
+  });
+
   it("keeps the point that cashed in the same Carolina win", () => {
     assert.equal(clearsCashGate({ market: "point", lambda: 1.2, line: 0.5, b2b: true }), true);
   });

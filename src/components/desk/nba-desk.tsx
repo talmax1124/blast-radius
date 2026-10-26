@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { analyzeNba } from "@/lib/nba/functions";
 import { RIM, type Market } from "@/lib/nba/score";
+import { BOOK } from "@/lib/slips/book";
 import type { NbaBoard, NbaPlayer } from "@/lib/nba/types";
 
 const STORAGE_KEY = "great-run:nba-board-1";
@@ -93,6 +94,27 @@ export function NbaDesk() {
           </Button>
         </div>
       </header>
+
+      <section className="border border-border bg-surface px-4 py-3">
+        <p className="kicker">Book</p>
+        <ul className="mt-2 flex flex-col gap-1">
+          {BOOK.map((card) => (
+            <li key={card.title} className="text-sm text-muted">
+              <span className="text-fg">{card.date}</span>
+              <span> {card.title} </span>
+              <span className={card.result === "hit" ? "text-pine" : "text-brick"}>{card.result}</span>
+              <span className="text-faint">
+                {" "}
+                · {card.legs.filter((leg) => leg.result === "hit").length}/{card.legs.length}
+                {card.legs
+                  .filter((leg) => leg.result === "miss")
+                  .map((leg) => ` · ${leg.name.split(" ").slice(-1)[0]} ${leg.actual}`)
+                  .join("")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       {run.isPending && !board ? (
         <div className="flex flex-col gap-4">

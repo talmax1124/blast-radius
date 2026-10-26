@@ -11,6 +11,20 @@ describe("minutes mass", () => {
     assert.ok(hot > 28, `hot ${hot}`);
   });
 
+  it("will not sign 19.5 points when the night is only 62 percent of the minutes", () => {
+    const { quotes } = projectPlayer({
+      pos: "G",
+      gp: 2,
+      season: { min: 32, pts: 24, reb: 4, ast: 8, threes: 3 },
+      careerGp: 200,
+      career: { min: 32, pts: 22, reb: 4, ast: 7, threes: 2.5 },
+      home: true,
+    });
+    const short = quotes.pts.projection * 0.62;
+    assert.ok(coverOver(short, 19.5, "pts") < 0.55);
+    assert.notEqual(quotes.pts.lean === "over" && (quotes.pts.cashOver ?? 0) >= 19.5, true);
+  });
+
   it("will not cash a points over that dies when six minutes come off", () => {
     const { quotes } = projectPlayer({
       pos: "F",
