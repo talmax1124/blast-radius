@@ -107,7 +107,7 @@ export function NbaDesk() {
               </span>
               <span className="text-faint">
                 {" "}
-                · {card.legs.filter((leg) => leg.result === "hit").length}/{card.legs.filter((leg) => leg.result !== "open").length || card.legs.length}
+                · {card.legs.filter((leg) => leg.result === "hit").length}/{card.legs.filter((leg) => leg.result === "hit" || leg.result === "miss").length || card.legs.length}
                 {card.legs
                   .filter((leg) => leg.result === "miss")
                   .map((leg) => ` · ${leg.name.split(" ").slice(-1)[0]} ${leg.actual}`)
@@ -115,6 +115,12 @@ export function NbaDesk() {
                 {card.legs.some((leg) => leg.result === "open")
                   ? ` · open ${card.legs
                       .filter((leg) => leg.result === "open")
+                      .map((leg) => leg.name.split(" ").slice(-1)[0])
+                      .join(", ")}`
+                  : ""}
+                {card.legs.some((leg) => leg.result === "void")
+                  ? ` · void ${card.legs
+                      .filter((leg) => leg.result === "void")
                       .map((leg) => leg.name.split(" ").slice(-1)[0])
                       .join(", ")}`
                   : ""}

@@ -96,3 +96,15 @@ describe("composer", () => {
     assert.equal(six.dist.length, 7);
   });
 });
+
+describe("graded book", () => {
+  it("trains calibration only on graded legs with a model chance", async () => {
+    const { bookLedger, BOOK } = await import("../slips/book.ts");
+    const rows = bookLedger();
+    assert.ok(rows.length > 0);
+    assert.ok(rows.every((r) => (r.result === "hit" || r.result === "miss") && r.p > 0 && r.p < 1));
+    const withModel = BOOK.flatMap((c) => c.legs).filter((l) => l.model && (l.result === "hit" || l.result === "miss")).length;
+    assert.equal(rows.length, withModel);
+    assert.equal(new Set(rows.map((r) => r.id)).size, rows.length);
+  });
+});

@@ -14,6 +14,7 @@ import {
   tennisLegs,
 } from "@/lib/board/compose";
 import { applyLedger, reportOf, toLedger } from "@/lib/board/grade";
+import { bookLedger } from "@/lib/slips/book";
 import {
   growthCurve,
   kellyRow,
@@ -192,7 +193,8 @@ export function BoardDesk() {
     });
   }, [raw]);
 
-  const legs = useMemo(() => applyLedger(raw, ledger), [raw, ledger]);
+  // Calibration trains on the board's own ledger plus the graded book.
+  const legs = useMemo(() => applyLedger(raw, [...ledger, ...bookLedger()]), [raw, ledger]);
   const scoped = facet === "all" ? legs : legs.filter((l) => l.sport === facet);
   const filtered = market ? scoped.filter((l) => l.market === market) : scoped;
   const slips = useMemo(() => buildSlips(filtered, facet), [filtered, facet]);
