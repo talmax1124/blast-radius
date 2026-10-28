@@ -22,6 +22,19 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    date: "2026-10-27",
+    title: "2 NBA, 4 NHL",
+    result: "miss",
+    legs: [
+      { name: "Jalen Brunson", market: "points", side: "under", line: 26.5, actual: 23, result: "hit", model: { sport: "nba", key: "pts-under", p: 0.688 } },
+      { name: "Cade Cunningham", market: "points", side: "under", line: 23.5, actual: 19, result: "hit", model: { sport: "nba", key: "pts-under", p: 0.621 } },
+      { name: "David Pastrnak", market: "shots", side: "over", line: 2.5, actual: 1, result: "miss", model: { sport: "nhl", key: "sog25", p: 0.722 } },
+      { name: "Kirill Kaprizov", market: "points", side: "over", line: 0.5, actual: 2, result: "hit", model: { sport: "nhl", key: "point", p: 0.759 } },
+      { name: "Macklin Celebrini", market: "points", side: "over", line: 0.5, actual: 0, result: "miss", model: { sport: "nhl", key: "point", p: 0.736 } },
+      { name: "Matt Boldy", market: "shots", side: "over", line: 2.5, actual: 2, result: "miss", model: { sport: "nhl", key: "sog25", p: 0.766 } },
+    ],
+  },
+  {
     date: "2026-10-26",
     title: "3 NBA, 3 WNBA",
     result: "miss",
