@@ -22,6 +22,31 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    date: "2026-10-28",
+    title: "SGP: Heat-Hawks, Magic-Raptors, Warriors-Wolves",
+    result: "miss",
+    legs: [
+      { name: "Bam Adebayo", market: "points", side: "under", line: 18.5, actual: 24, result: "miss", model: { sport: "nba", key: "pts-under", p: 0.671 } },
+      { name: "Giannis Antetokounmpo", market: "rebounds", side: "over", line: 7.5, actual: 18, result: "hit", model: { sport: "nba", key: "reb", p: 0.7 } },
+      { name: "Wendell Carter Jr.", market: "rebounds", side: "under", line: 8.5, actual: 10, result: "miss", model: { sport: "nba", key: "reb-under", p: 0.62 } },
+      { name: "Scottie Barnes", market: "rebounds", side: "over", line: 7.5, actual: 6, result: "miss", model: { sport: "nba", key: "reb", p: 0.512 } },
+      { name: "LaMelo Ball", market: "rebounds", side: "under", line: 4.5, actual: 4, result: "hit", model: { sport: "nba", key: "reb-under", p: 0.627 } },
+      { name: "Jaden McDaniels", market: "points", side: "under", line: 17.5, actual: 19, result: "miss", model: { sport: "nba", key: "pts-under", p: 0.657 } },
+    ],
+  },
+  {
+    // Bam and LaMelo are graded once, on the card above, so they do not count twice in calibration.
+    date: "2026-10-28",
+    title: "4-leg NBA",
+    result: "miss",
+    legs: [
+      { name: "Bam Adebayo", market: "points", side: "under", line: 18.5, actual: 24, result: "miss" },
+      { name: "Darius Garland", market: "assists", side: "under", line: 8.5, actual: 5, result: "hit", model: { sport: "nba", key: "ast-under", p: 0.692 } },
+      { name: "LeBron James", market: "points + rebounds + assists", side: "over", line: 30.5, actual: 28, result: "miss", model: { sport: "nba", key: "pra", p: 0.614 } },
+      { name: "LaMelo Ball", market: "rebounds", side: "under", line: 4.5, actual: 4, result: "hit" },
+    ],
+  },
+  {
     date: "2026-10-27",
     title: "2 NBA, 4 NHL",
     result: "miss",

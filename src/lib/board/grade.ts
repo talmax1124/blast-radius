@@ -158,7 +158,7 @@ export const TRUST: Record<Sport, number> = {
  * Fit the trust factor for one sport from graded legs: the MAP of
  * p' = sigmoid(t * logit(p)) under a normal prior on t. Capped at 1, so a hot run never inflates the number.
  */
-export function fitTrust(legs: LedgerLeg[], prior: number, sd = 0.15): number {
+export function fitTrust(legs: LedgerLeg[], prior: number, sd = 0.25): number {
   if (!legs.length) return prior;
   let best = prior;
   let bestScore = Number.NEGATIVE_INFINITY;
