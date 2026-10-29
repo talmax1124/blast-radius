@@ -201,6 +201,26 @@ export function calibrate(leg: BoardLeg, book: LedgerLeg[], trust = trustOf(leg.
   return adjustP(tempered, leg.sport, leg.market, slice);
 }
 
+/**
+ * Share of the log-odds left to the model when a sharp price exists. The rest stays on the market.
+ * Legs are picked where the model and the book disagree most, and the book is usually the one that is right,
+ * so a raw model edge is mostly the model's error. 28 graded legs priced at 70% hit 46%.
+ */
+export const MODEL_WEIGHT = 1 / 3;
+
+/** Chance after starting from the no-vig market price and moving part of the way to the model. */
+export function blendMarket(model: number, market: number, weight = MODEL_WEIGHT): number {
+  return sigmoid(weight * logit(model) + (1 - weight) * logit(market));
+}
+
+/** No-vig chance of the over from a two-way price. One-sided prices come back with their juice. */
+export function noVigOver(overAmerican: number, underAmerican: number | null): number {
+  const prob = (a: number) => (a < 0 ? -a / (-a + 100) : 100 / (a + 100));
+  const over = prob(overAmerican);
+  if (underAmerican == null) return over;
+  return over / (over + prob(underAmerican));
+}
+
 export function applyLedger(legs: BoardLeg[], book: LedgerLeg[]): BoardLeg[] {
   const byId = new Map(book.map((l) => [l.id, l]));
   const trust = new Map<Sport, number>();

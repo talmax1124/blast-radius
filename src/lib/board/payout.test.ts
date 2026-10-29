@@ -108,3 +108,15 @@ describe("graded book", () => {
     assert.equal(new Set(rows.map((r) => r.id)).size, rows.length);
   });
 });
+
+describe("market blend", () => {
+  it("starts from the no-vig price and moves a third of the way to the model", async () => {
+    const { blendMarket, noVigOver } = await import("./grade.ts");
+    const market = noVigOver(-120, 100);
+    assert.ok(market > 0.52 && market < 0.53);
+    const p = blendMarket(0.75, market);
+    assert.ok(p > market && p < 0.75);
+    assert.ok(Math.abs(blendMarket(0.6, 0.6) - 0.6) < 1e-12);
+    assert.equal(noVigOver(-150, null), 0.6);
+  });
+});
