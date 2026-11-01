@@ -22,6 +22,19 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    date: "2026-10-29",
+    title: "2 WNBA, 2 NBA, 2 NFL",
+    result: "miss",
+    legs: [
+      { name: "Angel Reese", market: "rebounds", side: "over", line: 9.5, actual: 14, result: "hit" },
+      { name: "Valkyries at Dream", market: "total points", side: "under", line: 147.5, actual: 149, result: "miss" },
+      { name: "Chuba Hubbard", market: "receiving yards", side: "over", line: 14.5, actual: 38, result: "hit", model: { sport: "nfl", key: "recyd", p: 0.765 } },
+      { name: "John Metchie III", market: "receiving yards", side: "over", line: 15.5, actual: 14, result: "miss", model: { sport: "nfl", key: "recyd", p: 0.774 } },
+      { name: "James Harden", market: "assists", side: "over", line: 4.5, actual: 4, result: "miss", model: { sport: "nba", key: "ast", p: 0.801 } },
+      { name: "Domantas Sabonis", market: "rebounds", side: "over", line: 9.5, actual: 15, result: "hit", model: { sport: "nba", key: "reb", p: 0.748 } },
+    ],
+  },
+  {
     date: "2026-10-28",
     title: "SGP: Heat-Hawks, Magic-Raptors, Warriors-Wolves",
     result: "miss",
