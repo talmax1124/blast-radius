@@ -22,6 +22,32 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    date: "2026-11-01",
+    title: "SNF + Lakers",
+    result: "miss",
+    legs: [
+      { name: "Makai Lemon", market: "receptions", side: "over", line: 4.5, actual: 6, result: "hit", model: { sport: "nfl", key: "rec", p: 0.917 } },
+      { name: "Rachaad White", market: "receiving yards", side: "over", line: 13.5, actual: 5, result: "miss", model: { sport: "nfl", key: "recyd", p: 0.851 } },
+      { name: "Chig Okonkwo", market: "receiving yards", side: "over", line: 33.5, actual: 32, result: "miss", model: { sport: "nfl", key: "recyd", p: 0.73 } },
+      { name: "Darius Cooper", market: "receiving yards", side: "over", line: 26.5, actual: 19, result: "miss", model: { sport: "nfl", key: "recyd", p: 0.76 } },
+      { name: "Jayden Daniels", market: "passing yards", side: "over", line: 200.5, actual: 217, result: "hit", model: { sport: "nfl", key: "pass", p: 0.66 } },
+      { name: "Walker Kessler", market: "rebounds", side: "over", line: 7.5, actual: 15, result: "hit", model: { sport: "nba", key: "reb", p: 0.667 } },
+    ],
+  },
+  {
+    date: "2026-11-01",
+    title: "Colts-Jaguars + Warriors",
+    result: "hit",
+    legs: [
+      { name: "Jaguars", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit" },
+      { name: "Jonathan Taylor", market: "rushing yards", side: "under", line: 60.5, actual: 23, result: "hit" },
+      { name: "Bhayshul Tuten", market: "anytime touchdown", side: "over", line: 0.5, actual: 2, result: "hit", model: { sport: "nfl", key: "atd", p: 0.44 } },
+      { name: "Darius Garland", market: "points", side: "over", line: 14.5, actual: 15, result: "hit" },
+      { name: "Brandin Podziemski", market: "points", side: "over", line: 14.5, actual: 17, result: "hit" },
+      { name: "Kris Dunn", market: "assists", side: "over", line: 2.5, actual: 4, result: "hit" },
+    ],
+  },
+  {
     date: "2026-10-29",
     title: "2 WNBA, 2 NBA, 2 NFL",
     result: "miss",
