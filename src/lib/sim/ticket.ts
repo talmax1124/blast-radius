@@ -1,4 +1,5 @@
 import { blendMarket, noVigOver } from "../board/grade.ts";
+import { Hist, type Spread } from "./distribution.ts";
 import { makeRng } from "./rng.ts";
 import { newNbaState, playNba, type NbaGameIn, type NbaGameState, type NbaStat } from "./nba.ts";
 import { newNflState, playNfl, type NflGameIn, type NflGameState, type NflStat } from "./nfl.ts";
@@ -31,7 +32,12 @@ export type LegReport = {
   mean: number | null;
   /** Hit rate of the leg given that every other leg hit. Below `sim`, the legs fight each other. */
   givenRest: number;
+  /** The simulated values of the leg's stat (or margin, for sides), as an integer histogram. */
+  spread: Spread;
 };
+
+/** One simulated game as the ticket saw it: the score and each leg's value and result. */
+export type SampleGame = { scores: [number, number][]; values: number[]; hits: boolean[] };
 
 export type TicketReport = {
   sims: number;
@@ -49,6 +55,8 @@ export type TicketReport = {
   evAtOffer: number | null;
   /** Standard error of the joint estimate. */
   jointSe: number;
+  /** The first few simulated games, so a person can see what a replay looks like. */
+  samples: SampleGame[];
 };
 
 type State = { sport: "nba"; s: NbaGameState; g: NbaGameIn } | { sport: "nfl"; s: NflGameState; g: NflGameIn };
@@ -138,7 +146,7 @@ function toAmerican(p: number): number {
   return p >= 0.5 ? Math.round((-100 * p) / (1 - p)) : Math.round((100 * (1 - p)) / p);
 }
 
-export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: number; seed?: number; offered?: number; onProgress?: (done: number) => void } = {}): TicketReport {
+export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: number; seed?: number; offered?: number; samples?: number; onProgress?: (done: number) => void } = {}): TicketReport {
   const sims = opts.sims ?? 1_000_000;
   const rng = makeRng(opts.seed ?? 7);
   let games = input;
@@ -159,6 +167,9 @@ export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: num
   const restHits = new Float64Array(n);
   const restCount = new Float64Array(n);
   const got = new Uint8Array(n);
+  const hists = legs.map(() => new Hist(-100, 700));
+  const samples: SampleGame[] = [];
+  const sampleCount = opts.samples ?? 12;
   let joint = 0;
 
   for (let k = 0; k < sims; k++) {
@@ -171,11 +182,19 @@ export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: num
     for (let j = 0; j < n; j++) {
       const v = value(states[legs[j].game], legs[j], idx[j]);
       sums[j] += v;
+      hists[j].add(v);
       got[j] = hit(legs[j], v) ? 1 : 0;
       hits[j] += got[j];
       all += got[j];
     }
     if (all === n) joint += 1;
+    if (k < sampleCount) {
+      samples.push({
+        scores: states.map((st) => [st.s.awayPts, st.s.homePts] as [number, number]),
+        values: legs.map((l, j) => value(states[l.game], l, idx[j])),
+        hits: Array.from(got, (g) => g === 1),
+      });
+    }
     // For each leg, how it does when every other leg already hit.
     for (let j = 0; j < n; j++) {
       if (all - got[j] === n - 1) {
@@ -194,6 +213,7 @@ export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: num
       blended: market != null && leg.opposite != null ? blendMarket(clamp(sim), market) : null,
       mean: leg.kind === "moneyline" || leg.kind === "spread" ? null : sums[j] / sims,
       givenRest: restCount[j] > 0 ? restHits[j] / restCount[j] : 0,
+      spread: hists[j].summary(),
     };
   });
   const pJoint = joint / sims;
@@ -210,6 +230,7 @@ export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: num
     fairAmerican: toAmerican(calibrated),
     evAtOffer: opts.offered != null ? calibrated * americanToDecimal(opts.offered) : null,
     jointSe: Math.sqrt((pJoint * (1 - pJoint)) / sims),
+    samples,
   };
 }
 

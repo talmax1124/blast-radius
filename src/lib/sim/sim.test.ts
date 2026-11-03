@@ -151,3 +151,25 @@ describe("nfl game", () => {
     assert.ok(r.evAtOffer != null);
   });
 });
+
+describe("spreads", () => {
+  it("summarizes every player's replays and places a real result in them", async () => {
+    const { simulateGame, percentileOf } = await import("./distribution.ts");
+    const g = simulateGame({ sport: "nba", game: nba }, { sims: 40_000 });
+    const star = g.players.find((p) => p.name === "Star");
+    assert.ok(star);
+    const pts = star.stats.pts;
+    assert.ok(pts.q10 < pts.q50 && pts.q50 < pts.q90);
+    near(pts.mean, 27, 1.6);
+    assert.ok(percentileOf(pts, pts.q50) > 0.4 && percentileOf(pts, pts.q50) < 0.6);
+    assert.ok(percentileOf(pts, 80) > 0.99);
+    near(g.homeWin, 0.64, 0.03);
+  });
+
+  it("keeps sample games and a histogram for every leg", () => {
+    const r = simulateTicket([{ sport: "nfl", game: nfl }], [{ kind: "player", game: 0, player: "TE", stat: "recYd", side: "over", line: 42.5 }], { sims: 5000 });
+    assert.equal(r.samples.length, 12);
+    assert.equal(r.legs[0].spread.n, 5000);
+    assert.equal(r.samples[0].hits[0], r.samples[0].values[0] > 42.5);
+  });
+});
