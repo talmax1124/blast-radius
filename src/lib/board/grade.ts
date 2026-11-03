@@ -208,9 +208,21 @@ export function calibrate(leg: BoardLeg, book: LedgerLeg[], trust = trustOf(leg.
  */
 export const MODEL_WEIGHT = 1 / 3;
 
-/** Chance after starting from the no-vig market price and moving part of the way to the model. */
+/**
+ * Gap (in probability) past which the model's share shrinks. 54 graded legs: priced 70–90% they hit 48%,
+ * and those were the legs furthest above the book. A big gap is far more often our input error than an edge.
+ */
+export const MARKET_GAP = 0.1;
+
+/**
+ * Chance after starting from the no-vig market price and moving part of the way to the model.
+ * The further the model sits from the book, the less of the move it gets: at a 10-point gap it keeps
+ * half its weight, at 20 points a fifth.
+ */
 export function blendMarket(model: number, market: number, weight = MODEL_WEIGHT): number {
-  return sigmoid(weight * logit(model) + (1 - weight) * logit(market));
+  const gap = Math.abs(model - market) / MARKET_GAP;
+  const w = weight / (1 + gap * gap);
+  return sigmoid(w * logit(model) + (1 - w) * logit(market));
 }
 
 /** No-vig chance of the over from a two-way price. One-sided prices come back with their juice. */

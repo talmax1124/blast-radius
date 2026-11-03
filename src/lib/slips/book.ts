@@ -11,6 +11,9 @@ export type BookLeg = {
   result: "hit" | "miss" | "open" | "void";
   /** Raw model chance before the trust factor, with the board's market key. Legs without one do not train calibration. */
   model?: { sport: Sport; key: string; p: number };
+  /** Hard Rock price taken, American odds, and the other side when it was posted. Scores the model against the book. */
+  price?: number;
+  opposite?: number;
 };
 
 export type BookCard = {
@@ -26,7 +29,7 @@ export const BOOK: BookCard[] = [
     title: "MNF + NBA",
     result: "hit",
     legs: [
-      { name: "Colston Loveland", market: "receiving yards", side: "over", line: 42.5, actual: 65, result: "hit", model: { sport: "nfl", key: "recyd", p: 0.861 } },
+      { name: "Colston Loveland", market: "receiving yards", side: "over", line: 42.5, actual: 65, result: "hit", model: { sport: "nfl", key: "recyd", p: 0.861 }, price: -114, opposite: -114 },
       { name: "Jaxon Smith-Njigba", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit", model: { sport: "nfl", key: "atd", p: 0.344 } },
       { name: "D'Andre Swift", market: "anytime touchdown", side: "over", line: 0.5, actual: 3, result: "hit", model: { sport: "nfl", key: "atd", p: 0.45 } },
       { name: "Jamal Murray", market: "rebounds", side: "over", line: 3.5, actual: 5, result: "hit", model: { sport: "nba", key: "reb", p: 0.729 } },
