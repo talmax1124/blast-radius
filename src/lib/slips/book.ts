@@ -37,9 +37,10 @@ export const BOOK: BookCard[] = [
   {
     // Loveland, Smith-Njigba and Swift are graded once, on the card above.
     date: "2026-11-02",
-    title: "MNF 4-leg",
+    title: "MNF 5-leg, +1293, $10 paid $139.26",
     result: "hit",
     legs: [
+      { name: "Caleb Williams", market: "rushing yards", side: "under", line: 22.5, actual: 1, result: "hit" },
       { name: "Colston Loveland", market: "receiving yards", side: "over", line: 42.5, actual: 65, result: "hit" },
       { name: "Jaxon Smith-Njigba", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
       { name: "D'Andre Swift", market: "anytime touchdown", side: "over", line: 0.5, actual: 3, result: "hit" },
@@ -70,6 +71,8 @@ export const BOOK: BookCard[] = [
       { name: "Cade Cunningham", market: "assists", side: "over", line: 6.5, actual: 7, result: "hit", model: { sport: "nba", key: "ast", p: 0.682 } },
       { name: "Nikola Jokic", market: "assists", side: "over", line: 7.5, actual: 8, result: "hit", model: { sport: "nba", key: "ast", p: 0.69 } },
       { name: "Dejounte Murray", market: "assists", side: "over", line: 4.5, actual: null, result: "void" },
+      { name: "Pistons", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit" },
+      { name: "Nuggets", market: "moneyline", side: "over", line: 0.5, actual: 0, result: "miss" },
     ],
   },
   {
