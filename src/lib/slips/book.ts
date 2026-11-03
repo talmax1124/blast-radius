@@ -22,6 +22,57 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    date: "2026-11-02",
+    title: "MNF + NBA",
+    result: "hit",
+    legs: [
+      { name: "Colston Loveland", market: "receiving yards", side: "over", line: 42.5, actual: 65, result: "hit", model: { sport: "nfl", key: "recyd", p: 0.861 } },
+      { name: "Jaxon Smith-Njigba", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit", model: { sport: "nfl", key: "atd", p: 0.344 } },
+      { name: "D'Andre Swift", market: "anytime touchdown", side: "over", line: 0.5, actual: 3, result: "hit", model: { sport: "nfl", key: "atd", p: 0.45 } },
+      { name: "Jamal Murray", market: "rebounds", side: "over", line: 3.5, actual: 5, result: "hit", model: { sport: "nba", key: "reb", p: 0.729 } },
+      { name: "Scottie Barnes", market: "rebounds", side: "over", line: 5.5, actual: 15, result: "hit", model: { sport: "nba", key: "reb", p: 0.68 } },
+      { name: "Luka Doncic", market: "points", side: "over", line: 24.5, actual: 42, result: "hit", model: { sport: "nba", key: "pts", p: 0.837 } },
+    ],
+  },
+  {
+    // Loveland, Smith-Njigba and Swift are graded once, on the card above.
+    date: "2026-11-02",
+    title: "MNF 4-leg",
+    result: "hit",
+    legs: [
+      { name: "Colston Loveland", market: "receiving yards", side: "over", line: 42.5, actual: 65, result: "hit" },
+      { name: "Jaxon Smith-Njigba", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
+      { name: "D'Andre Swift", market: "anytime touchdown", side: "over", line: 0.5, actual: 3, result: "hit" },
+      { name: "Bears at Seahawks", market: "total points", side: "over", line: 46.5, actual: 51, result: "hit" },
+    ],
+  },
+  {
+    date: "2026-11-02",
+    title: "Suns-Warriors + Nuggets",
+    result: "miss",
+    legs: [
+      { name: "De'Anthony Melton", market: "threes", side: "over", line: 0.5, actual: 0, result: "miss", model: { sport: "nba", key: "threes", p: 0.893 } },
+      { name: "Brandin Podziemski", market: "rebounds", side: "over", line: 3.5, actual: 3, result: "miss", model: { sport: "nba", key: "reb", p: 0.785 } },
+      { name: "Brandin Podziemski", market: "assists", side: "over", line: 2.5, actual: 2, result: "miss", model: { sport: "nba", key: "ast", p: 0.828 } },
+      { name: "Dillon Brooks", market: "points", side: "over", line: 11.5, actual: 18, result: "hit", model: { sport: "nba", key: "pts", p: 0.868 } },
+      { name: "Devin Booker", market: "assists", side: "over", line: 3.5, actual: 5, result: "hit", model: { sport: "nba", key: "ast", p: 0.805 } },
+      { name: "Jamal Murray", market: "rebounds", side: "over", line: 3.5, actual: 5, result: "hit" },
+    ],
+  },
+  {
+    date: "2026-11-02",
+    title: "Six-game NBA",
+    result: "miss",
+    legs: [
+      { name: "Trae Young", market: "assists", side: "over", line: 8.5, actual: 9, result: "hit" },
+      { name: "Alperen Sengun", market: "rebounds", side: "over", line: 8.5, actual: 7, result: "miss", model: { sport: "nba", key: "reb", p: 0.527 } },
+      { name: "Shai Gilgeous-Alexander", market: "points", side: "over", line: 24.5, actual: 43, result: "hit", model: { sport: "nba", key: "pts", p: 0.664 } },
+      { name: "Cade Cunningham", market: "assists", side: "over", line: 6.5, actual: 7, result: "hit", model: { sport: "nba", key: "ast", p: 0.682 } },
+      { name: "Nikola Jokic", market: "assists", side: "over", line: 7.5, actual: 8, result: "hit", model: { sport: "nba", key: "ast", p: 0.69 } },
+      { name: "Dejounte Murray", market: "assists", side: "over", line: 4.5, actual: null, result: "void" },
+    ],
+  },
+  {
     date: "2026-11-01",
     title: "SNF + Lakers",
     result: "miss",
