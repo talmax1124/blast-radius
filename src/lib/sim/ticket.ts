@@ -138,7 +138,7 @@ function toAmerican(p: number): number {
   return p >= 0.5 ? Math.round((-100 * p) / (1 - p)) : Math.round((100 * (1 - p)) / p);
 }
 
-export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: number; seed?: number; offered?: number } = {}): TicketReport {
+export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: number; seed?: number; offered?: number; onProgress?: (done: number) => void } = {}): TicketReport {
   const sims = opts.sims ?? 1_000_000;
   const rng = makeRng(opts.seed ?? 7);
   let games = input;
@@ -162,6 +162,7 @@ export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: num
   let joint = 0;
 
   for (let k = 0; k < sims; k++) {
+    if (opts.onProgress && k % 50_000 === 0) opts.onProgress(k);
     for (const st of states) {
       if (st.sport === "nba") playNba(st.g, rng, st.s);
       else playNfl(st.g, rng, st.s);
