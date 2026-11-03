@@ -173,3 +173,53 @@ describe("spreads", () => {
     assert.equal(r.samples[0].hits[0], r.samples[0].values[0] > 42.5);
   });
 });
+
+describe("play by play", () => {
+  it("plays an NBA game possession by possession and averages the projections", async () => {
+    const { nbaPlayByPlay, playNbaPbp } = await import("./nba-pbp.ts");
+    const one = nbaPlayByPlay(nba, 4);
+    assert.ok(one.events.length > 150);
+    const last = one.events[one.events.length - 1];
+    assert.equal(last.away + last.home, one.state.awayPts + one.state.homePts);
+    const rng = makeRng(8);
+    const st = newNbaState(nba);
+    let pts = 0;
+    let total = 0;
+    const n = 3000;
+    for (let k = 0; k < n; k++) {
+      playNbaPbp(nba, rng, st);
+      pts += st.stat.pts[0];
+      total += st.homePts + st.awayPts;
+    }
+    near(pts / n, 27, 2.5);
+    near(total / n, 230.5, 6);
+  });
+
+  it("plays an NFL game snap by snap, crediting touchdowns and passing yards", async () => {
+    const { nflPlayByPlay, playNflPbp } = await import("./nfl-pbp.ts");
+    const one = nflPlayByPlay(nfl, 2);
+    assert.ok(one.events.some((e) => e.kind === "pass") && one.events.some((e) => e.kind === "run"));
+    const rng = makeRng(8);
+    const st = newNflState(nfl);
+    let pts = 0;
+    let tdTe = 0;
+    let passYd = 0;
+    let recYdChi = 0;
+    const n = 3000;
+    for (let k = 0; k < n; k++) {
+      playNflPbp(nfl, rng, st);
+      pts += st.homePts + st.awayPts;
+      tdTe += st.stat.recTd[1] > 0 ? 1 : 0;
+      passYd += st.stat.passYd[0];
+      recYdChi += st.stat.recYd[1] + st.stat.recYd[2] + st.stat.recYd[3];
+    }
+    near(pts / n, 46.5, 4.5);
+    assert.ok(tdTe / n > 0.15 && tdTe / n < 0.6);
+    assert.ok(passYd >= recYdChi);
+  });
+
+  it("prices a ticket with the play-by-play engine too", () => {
+    const r = simulateTicket([{ sport: "nba", game: nba }], [{ kind: "player", game: 0, player: "Star", stat: "ast", side: "over", line: 7.5 }], { sims: 3000, engine: "pbp" });
+    assert.ok(r.legs[0].sim > 0.5 && r.legs[0].sim < 0.95);
+  });
+});

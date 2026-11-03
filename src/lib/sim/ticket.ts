@@ -1,6 +1,8 @@
 import { blendMarket, noVigOver } from "../board/grade.ts";
 import { Hist, type Spread } from "./distribution.ts";
 import { makeRng } from "./rng.ts";
+import { playNbaPbp } from "./nba-pbp.ts";
+import { playNflPbp } from "./nfl-pbp.ts";
 import { newNbaState, playNba, type NbaGameIn, type NbaGameState, type NbaStat } from "./nba.ts";
 import { newNflState, playNfl, type NflGameIn, type NflGameState, type NflStat } from "./nfl.ts";
 
@@ -146,14 +148,16 @@ function toAmerican(p: number): number {
   return p >= 0.5 ? Math.round((-100 * p) / (1 - p)) : Math.round((100 * (1 - p)) / p);
 }
 
-export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: number; seed?: number; offered?: number; samples?: number; onProgress?: (done: number) => void } = {}): TicketReport {
+export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: number; seed?: number; offered?: number; samples?: number; engine?: "fast" | "pbp"; onProgress?: (done: number) => void } = {}): TicketReport {
   const sims = opts.sims ?? 1_000_000;
   const rng = makeRng(opts.seed ?? 7);
   let games = input;
   // NBA players only meet through the game's margin and total, so a game plays just the players on the ticket.
   // NFL players share their team's targets and carries, so the whole roster plays.
+  const pbp = opts.engine === "pbp";
+  // The play-by-play engine needs the whole roster on the floor.
   games = games.map((sg, gi) => {
-    if (sg.sport !== "nba") return sg;
+    if (sg.sport !== "nba" || pbp) return sg;
     const names = new Set(legs.filter((l) => l.game === gi && l.kind === "player").map((l) => (l as { player: string }).player.toLowerCase()));
     return { sport: "nba", game: { ...sg.game, players: sg.game.players.filter((p) => names.has(p.name.toLowerCase())) } };
   });
@@ -175,8 +179,8 @@ export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: num
   for (let k = 0; k < sims; k++) {
     if (opts.onProgress && k % 50_000 === 0) opts.onProgress(k);
     for (const st of states) {
-      if (st.sport === "nba") playNba(st.g, rng, st.s);
-      else playNfl(st.g, rng, st.s);
+      if (st.sport === "nba") (pbp ? playNbaPbp : playNba)(st.g, rng, st.s);
+      else (pbp ? playNflPbp : playNfl)(st.g, rng, st.s);
     }
     let all = 0;
     for (let j = 0; j < n; j++) {
