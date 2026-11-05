@@ -24,6 +24,68 @@ export type BookCard = {
 };
 
 export const BOOK: BookCard[] = [
+  // Nov 4. Model p is the simulator's raw chance after the live injury check, before trust and the market blend.
+  // Spread legs: line is the handicap taken, actual is that team's final margin.
+  {
+    date: "2026-11-04",
+    title: "NBA 6-man",
+    result: "miss",
+    legs: [
+      { name: "Tyrese Maxey", market: "points", side: "over", line: 23.5, actual: 19, result: "miss", model: { sport: "nba", key: "pts", p: 0.54 }, price: -117 },
+      { name: "Isaiah Hartenstein", market: "points", side: "under", line: 10.5, actual: 3, result: "hit", model: { sport: "nba", key: "pts-under", p: 0.589 }, price: 105 },
+      { name: "Donovan Mitchell", market: "assists", side: "over", line: 5.5, actual: 6, result: "hit", model: { sport: "nba", key: "ast", p: 0.507 }, price: 113 },
+      { name: "LaMelo Ball", market: "points", side: "under", line: 19.5, actual: 20, result: "miss", model: { sport: "nba", key: "pts-under", p: 0.622 }, price: -111, opposite: -109 },
+      { name: "Alperen Sengun", market: "assists", side: "over", line: 5.5, actual: 10, result: "hit", model: { sport: "nba", key: "ast", p: 0.616 } },
+      { name: "Luka Doncic", market: "points", side: "over", line: 34.5, actual: 40, result: "hit", model: { sport: "nba", key: "pts", p: 0.553 }, price: -106, opposite: -114 },
+    ],
+  },
+  {
+    // Shared legs with the 6-man are graded once, there.
+    date: "2026-11-04",
+    title: "NBA mega card, 6 games, 15 legs",
+    result: "miss",
+    legs: [
+      { name: "Tyrese Maxey", market: "points", side: "over", line: 23.5, actual: 19, result: "miss" },
+      { name: "Cade Cunningham", market: "points", side: "under", line: 24.5, actual: 26, result: "miss", model: { sport: "nba", key: "pts-under", p: 0.558 }, price: -110, opposite: -110 },
+      { name: "76ers", market: "spread", side: "over", line: 2.5, actual: 6, result: "hit", price: -114, opposite: -106 },
+      { name: "Isaiah Hartenstein", market: "points", side: "under", line: 10.5, actual: 3, result: "hit" },
+      { name: "Donovan Mitchell", market: "assists", side: "over", line: 5.5, actual: 6, result: "hit" },
+      { name: "Cavaliers", market: "spread", side: "over", line: 2.5, actual: -8, result: "miss", price: -115, opposite: -105 },
+      { name: "Rockets", market: "spread", side: "over", line: -8.5, actual: -10, result: "miss", price: -104, opposite: -116 },
+      { name: "Alperen Sengun", market: "assists", side: "over", line: 5.5, actual: 10, result: "hit" },
+      { name: "LaMelo Ball", market: "points", side: "under", line: 19.5, actual: 20, result: "miss" },
+      { name: "Luka Doncic", market: "points", side: "over", line: 34.5, actual: 40, result: "hit" },
+      { name: "Lakers at Kings", market: "total points", side: "over", line: 234.5, actual: 219, result: "miss", price: -110, opposite: -110 },
+      { name: "Jamal Murray", market: "points", side: "over", line: 23.5, actual: 14, result: "miss", model: { sport: "nba", key: "pts", p: 0.593 }, price: -122 },
+      { name: "Nuggets", market: "spread", side: "over", line: -4.5, actual: 19, result: "hit", price: -110, opposite: -110 },
+      { name: "Kyshawn George", market: "assists", side: "over", line: 3.5, actual: 7, result: "hit", model: { sport: "nba", key: "ast", p: 0.553 }, price: -133 },
+      { name: "Hawks at Wizards", market: "total points", side: "over", line: 232.5, actual: 225, result: "miss", price: -110, opposite: -110 },
+    ],
+  },
+  {
+    date: "2026-11-04",
+    title: "NBA top 4 (final run)",
+    result: "miss",
+    legs: [
+      { name: "LaMelo Ball", market: "points", side: "under", line: 19.5, actual: 20, result: "miss" },
+      { name: "Alperen Sengun", market: "assists", side: "over", line: 5.5, actual: 10, result: "hit" },
+      { name: "Jamal Murray", market: "points", side: "over", line: 23.5, actual: 14, result: "miss" },
+      { name: "Luka Doncic", market: "points", side: "over", line: 34.5, actual: 40, result: "hit" },
+    ],
+  },
+  {
+    date: "2026-11-04",
+    title: "NBA final 6-man",
+    result: "miss",
+    legs: [
+      { name: "LaMelo Ball", market: "points", side: "under", line: 19.5, actual: 20, result: "miss" },
+      { name: "Alperen Sengun", market: "assists", side: "over", line: 5.5, actual: 10, result: "hit" },
+      { name: "Jamal Murray", market: "points", side: "over", line: 23.5, actual: 14, result: "miss" },
+      { name: "Luka Doncic", market: "points", side: "over", line: 34.5, actual: 40, result: "hit" },
+      { name: "Fred VanVleet", market: "assists", side: "over", line: 5.5, actual: 3, result: "miss", model: { sport: "nba", key: "ast", p: 0.565 }, price: 113 },
+      { name: "Tyrese Maxey", market: "points", side: "over", line: 23.5, actual: 19, result: "miss" },
+    ],
+  },
   {
     date: "2026-11-02",
     title: "MNF + NBA",
