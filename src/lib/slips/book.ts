@@ -24,6 +24,33 @@ export type BookCard = {
 };
 
 export const BOOK: BookCard[] = [
+  // Nov 5, both placed on Hard Rock. Model p is the mean of the fast and play-by-play engines
+  // (they disagreed on several legs), after the live injury check with Tuten active.
+  {
+    date: "2026-11-05",
+    title: "TNF 5-leg SGP, +1096, $10.26 to pay $122.70",
+    result: "miss",
+    legs: [
+      { name: "Jaguars", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -550, opposite: 410 },
+      { name: "Chris Rodriguez Jr.", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit", model: { sport: "nfl", key: "atd", p: 0.319 }, price: 113 },
+      { name: "Joe Fagnano", market: "passing yards", side: "over", line: 160.5, actual: 60, result: "miss", model: { sport: "nfl", key: "passyd", p: 0.581 } },
+      { name: "Parker Washington", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit", model: { sport: "nfl", key: "atd", p: 0.34 }, price: 156 },
+      { name: "Derrick Henry", market: "rushing yards", side: "under", line: 71.5, actual: 57, result: "hit", model: { sport: "nfl", key: "rush-under", p: 0.606 } },
+    ],
+  },
+  {
+    date: "2026-11-05",
+    title: "TNF + Heat-Warriors 2-game SGP, +1914",
+    result: "miss",
+    legs: [
+      { name: "Trevor Lawrence", market: "passing touchdowns", side: "over", line: 1.5, actual: 1, result: "miss", model: { sport: "nfl", key: "passtd", p: 0.651 }, price: -133, opposite: 100 },
+      { name: "Rashod Bateman", market: "receiving yards", side: "over", line: 13.5, actual: 6, result: "miss", model: { sport: "nfl", key: "recyd", p: 0.652 } },
+      { name: "Stephen Curry", market: "points", side: "over", line: 25.5, actual: 29, result: "hit", model: { sport: "nba", key: "pts", p: 0.595 } },
+      { name: "Warriors", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -281, opposite: 230 },
+      { name: "De'Anthony Melton", market: "rebounds", side: "over", line: 3.5, actual: 6, result: "hit", model: { sport: "nba", key: "reb", p: 0.554 }, price: 103 },
+      { name: "Giannis Antetokounmpo", market: "points", side: "under", line: 28.5, actual: 20, result: "hit", model: { sport: "nba", key: "pts-under", p: 0.68 } },
+    ],
+  },
   // Nov 4. Model p is the simulator's raw chance after the live injury check, before trust and the market blend.
   // Spread legs: line is the handicap taken, actual is that team's final margin.
   {
