@@ -106,3 +106,45 @@ describe("market anchor and scorecard", () => {
     assert.ok(c.priced!.market.brier < c.priced!.model.brier);
   });
 });
+
+describe("engine consensus and backup quarterbacks", () => {
+  it("flags legs the two engines disagree on by more than ten points", async () => {
+    const { classify, CONSENSUS_GAP } = await import("./consensus.ts");
+    const rows = classify([0.555, 0.571, 0.894], [0.288, 0.52, 0.85], ["Maxey o25.5", "Brown o3.5 ast", "Spurs ML"]);
+    assert.equal(CONSENSUS_GAP, 0.1);
+    assert.deepEqual(rows.map((r) => r.agree), [false, true, true]);
+    assert.ok(Math.abs(rows[0].mean - 0.4215) < 1e-9);
+  });
+
+  it("reads the quarterback's share of team passes and cuts an emergency starter's passing game", async () => {
+    const { qbLevel, applyQbDowngrade } = await import("./roster.ts");
+    assert.equal(qbLevel(0.92), "starter");
+    assert.equal(qbLevel(0.3), "backup");
+    assert.equal(qbLevel(0.09), "emergency");
+    const game: NflGameIn = {
+      home: "BAL", away: "JAX", spread: 10, total: 39.5,
+      players: [
+        { name: "Joe Fagnano", team: "BAL", pos: "QB", passAtt: 27, passYd: 165, passTd: 0.75 },
+        { name: "Rashod Bateman", team: "BAL", pos: "WR", targets: 3.5, rec: 2.1, recYd: 28, recTd: 0.09 },
+        { name: "Trevor Lawrence", team: "JAX", pos: "QB", passAtt: 29, passYd: 238, passTd: 1.6 },
+      ],
+    };
+    const d = applyQbDowngrade(game, "BAL", "emergency");
+    const by = (n: string) => d.game.players.find((p) => p.name === n)!;
+    assert.ok(by("Joe Fagnano").passYd! < 120 && by("Joe Fagnano").passAtt === 27);
+    assert.ok(by("Rashod Bateman").recYd! < 20 && by("Rashod Bateman").targets === 3.5);
+    assert.equal(by("Trevor Lawrence").passYd, 238);
+    assert.equal(applyQbDowngrade(game, "JAX", "starter").change, null);
+  });
+
+  it("fits a roster's overflowing minutes into 240 from the deep bench first", async () => {
+    const { fitMinutes } = await import("./nba-pbp.ts");
+    const mins = [36, 35, 29, 28, 28, 25, 24, 24, 21, 21, 21, 21, 19];
+    const list = mins.map((m, i) => ({ name: `P${i}`, team: "LAL", minutes: m, pts: m * 0.5, reb: 3, ast: 2, threes: 1 }));
+    const fit = fitMinutes(list, ["LAL"]);
+    assert.ok(Math.abs(fit.reduce((s, p) => s + p.minutes, 0) - 240) < 1e-6);
+    assert.equal(fit[0].minutes, 36);
+    assert.equal(fit[0].pts, 18);
+    assert.ok(fit[12].minutes < 19);
+  });
+});

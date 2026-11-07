@@ -11,13 +11,18 @@
  * Add --live to check each game against the real world first: ESPN depth charts and injury reports
  * (players ruled out are dropped, missing starters added) and the kickoff forecast at the stadium
  * (wind, rain, snow and cold move the total and the passing game). Every change is printed.
+ *
+ * Add --consensus to run the play-by-play engine too and flag every leg the two engines disagree on by
+ * more than ten points. Flagged legs should come off the card: one of the inputs is wrong, and nobody
+ * knows which engine has it right.
  */
 import { readFileSync } from "node:fs";
 import { nbaGame, nflGame } from "./adapters.ts";
 import { simulateTicket, type Leg, type SimGame } from "./ticket.ts";
-import { checkNbaRoster, checkNflRoster, needsReview, type RosterChange } from "./roster.ts";
-import { espnInjuries, kickoff, nflDepth, nflWeather } from "./feeds.ts";
+import { applyQbDowngrade, checkNbaRoster, checkNflRoster, needsReview, qbLevel, type RosterChange } from "./roster.ts";
+import { espnInjuries, kickoff, nflDepth, nflPassShare, nflWeather } from "./feeds.ts";
 import { applyNflWeather, nflWeatherEffect } from "./weather.ts";
+import { consensus, CONSENSUS_GAP } from "./consensus.ts";
 
 /** Check one game against today's depth charts, injury reports and weather. Feeds fail soft. */
 async function live(g: SimGame, date: string): Promise<{ game: SimGame; changes: RosterChange[]; notes: string[] }> {
@@ -39,6 +44,18 @@ async function live(g: SimGame, date: string): Promise<{ game: SimGame; changes:
   const season = Number(date.slice(0, 4)) - (Number(date.slice(4, 6)) < 3 ? 1 : 0);
   const depth = [...(await soft(`${home} depth chart`, () => nflDepth(home, season), [])), ...(await soft(`${away} depth chart`, () => nflDepth(away, season), []))];
   const r = checkNflRoster(g.game, depth, injuries);
+  // Who is under center: a backup or emergency starter cuts the team's passing game.
+  for (const team of [home, away]) {
+    const out = new Set(injuries.filter((i) => i.team === team && (i.status === "out" || i.status === "doubtful")).map((i) => i.name));
+    const starter = depth.filter((d) => d.team === team && d.pos === "QB" && d.status !== "out" && d.status !== "doubtful" && !out.has(d.name)).sort((a, b) => a.rank - b.rank)[0];
+    if (!starter) continue;
+    const share = await soft(`${team} quarterback history`, () => nflPassShare(team, season, starter.name), { share: 1, attempts: 0, teamAttempts: 0 });
+    const level = qbLevel(share.share);
+    notes.push(`${team} quarterback: ${starter.name}, ${share.attempts} of ${share.teamAttempts} team attempts this season (${level})`);
+    const d = applyQbDowngrade(r.game, team, level);
+    r.game = d.game;
+    if (d.change) r.changes.push(d.change);
+  }
   const ko = await soft("kickoff time", () => kickoff("nfl", date, home), null);
   const weather = ko ? await soft("weather", () => nflWeather(home, ko), null) : null;
   const effect = nflWeatherEffect(weather);
@@ -60,7 +77,7 @@ function resolve(ref: GameRef): SimGame {
 
 const pct = (p: number) => `${(p * 100).toFixed(1)}%`;
 
-async function main(path: string, checkLive: boolean): Promise<void> {
+async function main(path: string, checkLive: boolean, checkConsensus: boolean): Promise<void> {
   const ticket = JSON.parse(readFileSync(path, "utf8")) as { games: GameRef[]; legs: Leg[]; sims?: number; seed?: number; offered?: number; date?: string };
   let games = ticket.games.map(resolve);
   if (checkLive) {
@@ -96,12 +113,21 @@ async function main(path: string, checkLive: boolean): Promise<void> {
   console.log(`if the legs were unrelated: ${pct(r.independent)}  ·  lift ${r.lift.toFixed(2)}x`);
   console.log(`calibrated: ${pct(r.calibrated)}  ·  fair price ${r.fairAmerican > 0 ? "+" : ""}${r.fairAmerican}`);
   if (r.evAtOffer != null) console.log(`return per $1 at +${ticket.offered}: ${r.evAtOffer.toFixed(2)}`);
+  if (checkConsensus) {
+    const c = consensus(games, ticket.legs, { fastSims: Math.min(ticket.sims ?? 1_000_000, 1_000_000), pbpSims: 100_000, seed: ticket.seed });
+    console.log(`\nconsensus (fast vs play-by-play, flag at ${(CONSENSUS_GAP * 100).toFixed(0)} points):`);
+    console.log("leg".padEnd(46), "fast".padStart(7), "pbp".padStart(7), "mean".padStart(7), "");
+    for (const l of c.legs) console.log(l.label.padEnd(46), pct(l.fast).padStart(7), pct(l.pbp).padStart(7), pct(l.mean).padStart(7), l.agree ? "  ok" : "  DROP: engines disagree");
+    console.log(`all legs hit: fast ${pct(c.joint.fast)} · play-by-play ${pct(c.joint.pbp)} · mean ${pct(c.joint.mean)}`);
+    if (c.drop.length) console.log(`drop ${c.drop.length} leg(s) before betting: ${c.drop.map((i) => c.legs[i].label).join("; ")}`);
+    else console.log("both engines agree on every leg");
+  }
 }
 
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith("--"));
 if (!file) {
-  console.error("usage: node --experimental-strip-types src/lib/sim/cli.ts ticket.json [--live]");
+  console.error("usage: node --experimental-strip-types src/lib/sim/cli.ts ticket.json [--live] [--consensus]");
   process.exit(1);
 }
-await main(file, args.includes("--live"));
+await main(file, args.includes("--live"), args.includes("--consensus"));

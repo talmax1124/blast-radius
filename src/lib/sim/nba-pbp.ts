@@ -28,10 +28,18 @@ export type PlayEvent = {
 };
 
 const LEAGUE = { ppp: 1.14, threeMake: 0.36, ftMake: 0.78, turnover: 0.13, foulTrip: 0.11, offReb: 0.26, assisted: 0.62 } as const;
+
+/**
+ * Game-to-game swing. Possession-by-possession luck alone already spreads margins wide, so the nightly
+ * shooting draw is small, and a trailing side shoots a little better (and a leading one a little worse),
+ * the way real games regress: urgency, coasting, and the other team's bench. Tuned so final margins
+ * spread about 12.5 points around the spread, as NBA results do.
+ */
+export const PBP_SWING = { shootSd: 0.025, catchUp: 0.0045 } as const;
 const STINTS_PER_PERIOD = 4;
 const STINT_SECONDS = 180;
 
-type Tune = { use: Float64Array; three: Float64Array; reb: Float64Array; ast: Float64Array; floor: Float64Array; twoMake: number; credit: [number, number] };
+type Tune = { use: Float64Array; three: Float64Array; reb: Float64Array; ast: Float64Array; floor: Float64Array; twoMake: number; credit: [number, number]; edge: number };
 const tunes = new WeakMap<NbaGameIn, Tune>();
 
 function sideOf(game: NbaGameIn, i: number): 0 | 1 {
@@ -40,7 +48,7 @@ function sideOf(game: NbaGameIn, i: number): 0 | 1 {
 
 function baseTune(game: NbaGameIn): Tune {
   const n = game.players.length;
-  const t: Tune = { use: new Float64Array(n), three: new Float64Array(n), reb: new Float64Array(n), ast: new Float64Array(n), floor: new Float64Array(n), twoMake: 0.53, credit: [1, 1] };
+  const t: Tune = { use: new Float64Array(n), three: new Float64Array(n), reb: new Float64Array(n), ast: new Float64Array(n), floor: new Float64Array(n), twoMake: 0.53, credit: [1, 1], edge: 1 };
   game.players.forEach((p, i) => {
     const m = Math.max(1, p.minutes);
     t.use[i] = Math.max(0.05, p.pts) / m;
@@ -60,13 +68,18 @@ function tuneOf(game: NbaGameIn): Tune {
   const rng = makeRng(17);
   const st = emptyState(game.players.length);
   const n = game.players.length;
-  for (let round = 0; round < 6; round++) {
+  const target = -game.spread;
+  // Tune under the same randomness the real runs use, so blowouts (and the bench minutes they cause)
+  // happen as often while tuning as they do when the ticket is priced.
+  for (let round = 0; round < 8; round++) {
     const sum = { pts: new Float64Array(n), reb: new Float64Array(n), ast: new Float64Array(n), threes: new Float64Array(n), min: new Float64Array(n) };
     let teamPts = 0;
-    const games = 300;
+    let margin = 0;
+    const games = 400;
     for (let g = 0; g < games; g++) {
-      play(game, t, rng, st, null, true);
+      play(game, t, rng, st, null);
       teamPts += st.homePts + st.awayPts;
+      margin += st.homePts - st.awayPts;
       for (let i = 0; i < n; i++) {
         sum.pts[i] += st.stat.pts[i];
         sum.reb[i] += st.stat.reb[i];
@@ -75,6 +88,8 @@ function tuneOf(game: NbaGameIn): Tune {
         sum.min[i] += st.stat.min[i];
       }
     }
+    // The favorite's edge: pushed until the average margin sits on the spread.
+    t.edge = Math.max(0.3, Math.min(3, t.edge + (target - margin / games) / Math.max(4, Math.abs(target) + 4) * 0.8 * Math.sign(target || 1)));
     const step = (target: number, got: number) => Math.pow(Math.max(0.05, target) / Math.max(0.05, got / games), 0.85);
     game.players.forEach((p, i) => {
       t.floor[i] *= step(p.minutes, sum.min[i]);
@@ -133,7 +148,7 @@ function clockText(s: number): string {
   return `${m}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 }
 
-function play(game: NbaGameIn, t: Tune, rng: Rng, out: NbaGameState, log: PlayEvent[] | null, tuning = false): void {
+function play(game: NbaGameIn, t: Tune, rng: Rng, out: NbaGameState, log: PlayEvent[] | null): void {
   const s = NBA_SIM;
   out.homePts = 0;
   out.awayPts = 0;
@@ -143,12 +158,12 @@ function play(game: NbaGameIn, t: Tune, rng: Rng, out: NbaGameState, log: PlayEv
   const names = [game.away, game.home];
   // The night: a pace and a shooting form for each side, drawn the way the fast model draws its margin and total.
   const pace = (game.total / (2 * LEAGUE.ppp)) * Math.exp(0.06 * rng.normal());
-  const edge = -game.spread / 2;
+  const edge = (-game.spread / 2) * t.edge;
   const shoot = [0, 1].map((side) => {
     const want = game.total / 2 + (side === 1 ? edge : -edge);
-    return Math.max(0.75, Math.min(1.25, (want / (game.total / 2)) * (1 + (tuning ? 0 : 0.055 * rng.normal()))));
+    return Math.max(0.75, Math.min(1.25, (want / (game.total / 2)) * (1 + PBP_SWING.shootSd * rng.normal())));
   });
-  const form = game.players.map(() => (tuning ? 1 : rng.gamma(s.formShape, 1 / s.formShape)));
+  const form = game.players.map(() => rng.gamma(s.formShape, 1 / s.formShape));
   const seconds = 4 * STINTS_PER_PERIOD * STINT_SECONDS;
   const perPossession = seconds / (2 * pace);
   let side: 0 | 1 = rng.next() < 0.5 ? 0 : 1;
@@ -191,7 +206,8 @@ function play(game: NbaGameIn, t: Tune, rng: Rng, out: NbaGameState, log: PlayEv
             break;
           }
           const three = rng.next() < t.three[shooter];
-          const make = three ? LEAGUE.threeMake * shoot[off] * Math.sqrt(form[shooter]) : t.twoMake * shoot[off] * Math.sqrt(form[shooter]);
+          const lag = Math.max(-0.12, Math.min(0.12, PBP_SWING.catchUp * (score[def] - score[off])));
+          const make = (three ? LEAGUE.threeMake : t.twoMake) * shoot[off] * Math.sqrt(form[shooter]) * (1 + lag);
           if (rng.next() < Math.min(0.9, make)) {
             const pts = three ? 3 : 2;
             score[off] += pts;
@@ -258,6 +274,45 @@ function last(name: string): string {
 
 const fulls = new WeakMap<NbaGameIn, NbaGameIn>();
 
+/** Players kept whole when a roster's projected minutes overflow the 240 a team can play. */
+export const ROTATION = 8;
+
+/**
+ * Projections often list more than 240 minutes for a team (thirteen players at 19+ minutes). Only 240
+ * exist, and on a real night they go to the rotation first, so the overflow comes off the deep bench
+ * (players past the top eight), and only then, if it must, off everyone in proportion. A player's
+ * counting stats scale with the minutes he keeps. Without this, every player is cut alike and the
+ * stars the props are about lose a quarter of their minutes.
+ */
+export function fitMinutes<T extends { name: string; team: string; minutes: number; pts: number; reb: number; ast: number; threes: number }>(list: T[], teams: string[]): T[] {
+  const out = list.map((p) => ({ ...p }));
+  for (const team of teams) {
+    const mine = out.filter((p) => p.team === team).sort((a, b) => b.minutes - a.minutes);
+    let excess = mine.reduce((s, p) => s + p.minutes, 0) - 240;
+    if (excess <= 0) continue;
+    const scale = (p: T, k: number) => {
+      p.minutes *= k;
+      p.pts *= k;
+      p.reb *= k;
+      p.ast *= k;
+      p.threes *= k;
+    };
+    const deep = mine.slice(ROTATION);
+    const deepMin = deep.reduce((s, p) => s + p.minutes, 0);
+    if (deepMin > 0) {
+      const k = Math.max(0, 1 - excess / deepMin);
+      for (const p of deep) scale(p, k);
+      excess -= deepMin * (1 - k);
+    }
+    if (excess > 0.5) {
+      const total = mine.reduce((s, p) => s + p.minutes, 0);
+      const k = 240 / total;
+      for (const p of mine) scale(p, k);
+    }
+  }
+  return out;
+}
+
 /**
  * A team's listed players rarely cover all 240 minutes (injuries, deep bench). The rest goes to one
  * bench player per side, carrying the team's leftover projected points at a reserve's rates, so the
@@ -266,10 +321,10 @@ const fulls = new WeakMap<NbaGameIn, NbaGameIn>();
 function withBench(game: NbaGameIn): NbaGameIn {
   const cached = fulls.get(game);
   if (cached) return cached;
-  const players = [...game.players];
+  const players = fitMinutes(game.players, [game.away, game.home]);
   const edge = -game.spread / 2;
   for (const team of [game.away, game.home]) {
-    const mine = game.players.filter((p) => p.team === team);
+    const mine = players.filter((p) => p.team === team);
     const minutes = 240 - mine.reduce((a, p) => a + p.minutes, 0);
     if (minutes < 4) continue;
     const want = game.total / 2 + (team === game.home ? edge : -edge);

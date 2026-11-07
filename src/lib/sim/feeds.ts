@@ -114,3 +114,28 @@ export async function kickoff(league: League, date: string, home: string): Promi
   }
   return null;
 }
+
+/** Share of the team's pass attempts this season thrown by one quarterback, from ESPN box scores. */
+export async function nflPassShare(team: string, season: number, qb: string): Promise<{ share: number; attempts: number; teamAttempts: number }> {
+  const ids = await espnTeams("nfl");
+  const id = ids.get(team)?.id;
+  if (!id) return { share: 1, attempts: 0, teamAttempts: 0 };
+  const sch = await json(`${SITE}/football/nfl/teams/${id}/schedule?season=${season}`);
+  let mine = 0;
+  let all = 0;
+  for (const e of sch.events ?? []) {
+    if (!e.competitions?.[0]?.status?.type?.completed) continue;
+    const s = await json(`${SITE}/football/nfl/summary?event=${e.id}`);
+    for (const t of s.boxscore?.players ?? []) {
+      if (t.team?.abbreviation !== team) continue;
+      const passing = (t.statistics ?? []).find((x: any) => x.name === "passing");
+      for (const a of passing?.athletes ?? []) {
+        const idx = (passing.labels as string[]).indexOf("C/ATT");
+        const att = Number(String(a.stats?.[idx] ?? "0/0").split("/")[1]) || 0;
+        all += att;
+        if (a.athlete?.displayName === qb) mine += att;
+      }
+    }
+  }
+  return { share: all > 0 ? mine / all : 1, attempts: mine, teamAttempts: all };
+}

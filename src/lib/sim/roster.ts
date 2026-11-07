@@ -229,3 +229,43 @@ export function checkNbaRoster(
 export function needsReview(changes: RosterChange[]): RosterChange[] {
   return changes.filter((c) => c.kind === "missing" || c.kind === "added");
 }
+
+/**
+ * Who is under center, judged by how much of the team's passing he has done this season.
+ * A regular starter has thrown most of the passes; a backup has some; an emergency starter (a third-string
+ * or practice-squad call-up) has almost none. On Nov 5 Joe Fagnano, with 9% of Baltimore's attempts,
+ * threw for 60 yards against projections of 160-190, and every Ravens receiving over missed.
+ */
+export type QbLevel = "starter" | "backup" | "emergency";
+
+export function qbLevel(share: number): QbLevel {
+  if (share >= 0.4) return "starter";
+  if (share >= 0.1) return "backup";
+  return "emergency";
+}
+
+/** What a downgrade at quarterback does to the team's passing game: yards, touchdowns and catches. */
+export const QB_DOWNGRADE: Record<Exclude<QbLevel, "starter">, { yards: number; tds: number; catches: number }> = {
+  backup: { yards: 0.85, tds: 0.8, catches: 0.95 },
+  emergency: { yards: 0.68, tds: 0.6, catches: 0.88 },
+};
+
+export function applyQbDowngrade(game: NflGameIn, team: string, level: QbLevel): { game: NflGameIn; change: RosterChange | null } {
+  if (level === "starter") return { game, change: null };
+  const k = QB_DOWNGRADE[level];
+  const players = game.players.map((p): NflPlayerIn => {
+    if (p.team !== team) return p;
+    return {
+      ...p,
+      passYd: p.passYd != null ? p.passYd * k.yards : undefined,
+      passTd: p.passTd != null ? p.passTd * k.tds : undefined,
+      rec: p.rec != null ? p.rec * k.catches : undefined,
+      recYd: p.recYd != null ? p.recYd * k.yards : undefined,
+      recTd: p.recTd != null ? p.recTd * k.tds : undefined,
+    };
+  });
+  return {
+    game: { ...game, players },
+    change: { team, name: "passing game", kind: "trimmed", note: `${level} quarterback: passing and receiving yards x${k.yards}, touchdowns x${k.tds}` },
+  };
+}
