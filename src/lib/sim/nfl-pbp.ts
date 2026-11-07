@@ -17,12 +17,12 @@ import { makeRng, type Rng } from "./rng.ts";
 const PLAY = { sack: 0.065, sackYards: 7, interception: 0.022, fumble: 0.008, xp: 0.95, punt: 43, runClock: 38, passClock: 28, incClock: 7 } as const;
 const GAME_SECONDS = 3600;
 
-type Tune = { target: Float64Array; carry: Float64Array; passEff: [number, number]; runEff: [number, number]; passRate: [number, number] };
+export type Tune = { target: Float64Array; carry: Float64Array; passEff: [number, number]; runEff: [number, number]; passRate: [number, number] };
 const tunes = new WeakMap<NflGameIn, Tune>();
 const fulls = new WeakMap<NflGameIn, NflGameIn>();
 
 /** Targets and carries the listed players do not cover go to a depth player per side, so shares stay honest. */
-function withDepth(game: NflGameIn): NflGameIn {
+export function withDepth(game: NflGameIn): NflGameIn {
   const cached = fulls.get(game);
   if (cached) return cached;
   const players = [...game.players];
@@ -46,7 +46,7 @@ function teamOf(game: NflGameIn, side: 0 | 1): string {
   return side === 1 ? game.home : game.away;
 }
 
-function baseTune(game: NflGameIn): Tune {
+export function baseTune(game: NflGameIn): Tune {
   const n = game.players.length;
   const t: Tune = { target: new Float64Array(n), carry: new Float64Array(n), passEff: [1, 1], runEff: [1, 1], passRate: [0.58, 0.58] };
   game.players.forEach((p, i) => {
@@ -63,12 +63,12 @@ function baseTune(game: NflGameIn): Tune {
 }
 
 type Scratch = NflGameState;
-function emptyState(n: number): Scratch {
+export function emptyState(n: number): Scratch {
   const a = () => new Float64Array(n);
   return { homePts: 0, awayPts: 0, stat: { passYd: a(), passTd: a(), rushAtt: a(), rushYd: a(), rushTd: a(), targets: a(), rec: a(), recYd: a(), recTd: a() } };
 }
 
-function tuneOf(game: NflGameIn): Tune {
+export function tuneOf(game: NflGameIn): Tune {
   const cached = tunes.get(game);
   if (cached) return cached;
   const t = baseTune(game);
@@ -77,7 +77,10 @@ function tuneOf(game: NflGameIn): Tune {
   const st = emptyState(n);
   const homeEdge = -game.spread;
   const wantPts = [(game.total - homeEdge) / 2, (game.total + homeEdge) / 2];
-  for (let round = 0; round < 9; round++) {
+  // Points respond steeply to efficiency (1.0 -> 1.5 roughly doubles scoring), and pass and run efficiency
+  // both move it, so each round takes only a small step. Full steps overshoot, swing wider every round,
+  // and pin weak offenses at the clamps (Week 10 ARI @ SEA swung 4 to 45 points).
+  for (let round = 0; round < 14; round++) {
     const games = 400;
     const sum = { targets: new Float64Array(n), rushAtt: new Float64Array(n), rec: new Float64Array(n), recYd: new Float64Array(n), rushYd: new Float64Array(n) };
     const pts = [0, 0];
@@ -100,8 +103,8 @@ function tuneOf(game: NflGameIn): Tune {
       const gotRushYd = mine.reduce((a, [, i]) => a + sum.rushYd[i], 0);
       // Yards follow each player's projection; points follow the market. Both pull on efficiency.
       const ptsPull = step(wantPts[side], pts[side], 1);
-      t.passEff[side] = clamp(t.passEff[side] * Math.pow(step(wantRecYd, gotRecYd, 1), 0.25) * Math.pow(ptsPull, 0.8), 0.4, 2.5);
-      t.runEff[side] = clamp(t.runEff[side] * Math.pow(step(wantRushYd, gotRushYd, 1), 0.25) * Math.pow(ptsPull, 0.8), 0.4, 2.5);
+      t.passEff[side] = clamp(t.passEff[side] * Math.pow(step(wantRecYd, gotRecYd, 1), 0.15) * Math.pow(ptsPull, 0.3), 0.4, 2.5);
+      t.runEff[side] = clamp(t.runEff[side] * Math.pow(step(wantRushYd, gotRushYd, 1), 0.15) * Math.pow(ptsPull, 0.3), 0.4, 2.5);
       // The team's mix: projected targets against projected carries, as volume, not just share.
       const wantT = mine.reduce((a, [p]) => a + (p.targets ?? 0), 0);
       const gotT = mine.reduce((a, [, i]) => a + sum.targets[i], 0) / games;
@@ -133,13 +136,15 @@ function pick(rng: Rng, idx: number[], w: Float64Array): number {
   return idx[idx.length - 1];
 }
 
-function play(game: NflGameIn, t: Tune, rng: Rng, out: Scratch, log: PlayEvent[] | null, tuning = false): void {
+export function play(game: NflGameIn, t: Tune, rng: Rng, out: Scratch, log: PlayEvent[] | null, tuning = false): void {
   out.homePts = 0;
   out.awayPts = 0;
   for (const arr of Object.values(out.stat)) arr.fill(0);
   const side: number[][] = [[], []];
   game.players.forEach((p, i) => side[p.team === game.home ? 1 : 0].push(i));
-  const qb = [0, 1].map((s) => side[s].find((i) => (game.players[i].passAtt ?? 0) > 0) ?? -1);
+  // The quarterback is the side's biggest passer, not the first player with any attempts: a receiver
+  // who threw one trick play averages a sliver of a pass and must not take the snaps.
+  const qb = [0, 1].map((s) => side[s].reduce((best, i) => ((game.players[i].passAtt ?? 0) > (best < 0 ? 0 : game.players[best].passAtt ?? 0) ? i : best), -1));
   // Tonight's form for each offense: the spread between good and bad days.
   const form = [0, 1].map(() => (tuning ? 1 : Math.exp(0.2 * rng.normal())));
   const score = [0, 0];
