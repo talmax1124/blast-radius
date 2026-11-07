@@ -14,6 +14,7 @@ import {
   tennisLegs,
 } from "@/lib/board/compose";
 import { applyLedger, reportOf, toLedger } from "@/lib/board/grade";
+import { bookLedger } from "@/lib/slips/book";
 import {
   growthCurve,
   kellyRow,
@@ -192,7 +193,8 @@ export function BoardDesk() {
     });
   }, [raw]);
 
-  const legs = useMemo(() => applyLedger(raw, ledger), [raw, ledger]);
+  // Calibration trains on the board's own ledger plus the graded book.
+  const legs = useMemo(() => applyLedger(raw, [...ledger, ...bookLedger()]), [raw, ledger]);
   const scoped = facet === "all" ? legs : legs.filter((l) => l.sport === facet);
   const filtered = market ? scoped.filter((l) => l.market === market) : scoped;
   const slips = useMemo(() => buildSlips(filtered, facet), [filtered, facet]);
@@ -299,8 +301,19 @@ export function BoardDesk() {
     return String(games);
   }
 
+  function returnCopy(card: BoardSlip): string {
+    const fmt = (r: number | null) => (r == null ? "—" : `${r >= 1 ? "+" : ""}${Math.round((r - 1) * 100)}%`);
+    const parts = [`Power ${fmt(card.power)}`];
+    if (card.flex != null) parts.push(`flex ${fmt(card.flex)}`);
+    parts.push(`with every leg cut 3 points ${fmt(card.stressed)}`);
+    const verdict = card.play === "pass" ? "Pass. The edge does not survive a small model error." : `Play it as ${card.play}.`;
+    return `Expected return per dollar: ${parts.join(", ")}. ${verdict} Default pick'em payouts; check the app.`;
+  }
+
   function mark(leg: BoardLeg, result: "hit" | "miss") {
-    setLedger((prev) => [toLedger(leg, result), ...prev.filter((row) => row.id !== leg.id)]);
+    // The ledger keeps the raw model number. Calibration is fit against it, not against itself.
+    const model = raw.find((row) => row.id === leg.id) ?? leg;
+    setLedger((prev) => [toLedger(model, result), ...prev.filter((row) => row.id !== leg.id)]);
   }
 
   function refresh() {
@@ -416,6 +429,7 @@ export function BoardDesk() {
             <>
               <h2 className="font-display mt-4 text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">{slip.title}</h2>
               <p className="font-serif mt-2 text-base text-ink/70 italic">{pct(slip.sweep)} to sweep. One player per game.</p>
+              <p className="mt-2 text-xs leading-relaxed text-ink/55 tabular-nums">{returnCopy(slip)}</p>
               <ul className="mt-4 flex flex-col">
                 {slip.legs.map((leg) => (
                   <SlipRow key={leg.id} leg={leg} onMark={mark} />

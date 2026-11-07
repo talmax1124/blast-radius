@@ -120,7 +120,12 @@ export function quoteCover(pick: NflPick, market: NflMarket, line: number): numb
   const mean = projectionOf(pick, market);
   if (market === "rec") return coverOver(mean, line, "count");
   if (market === "atd" || market === "passtd") return coverOver(mean, line, "td");
-  return coverOver(mean, line, "yards", cvOf(market, pick.pos));
+  // A player with no catch (or no carry) has zero yards, and the lognormal has no mass at zero.
+  // Price the yards as P(at least one) times the survival of the yards given at least one.
+  const zero = market === "recyd" ? Math.exp(-Math.max(0, pick.expRec)) : market === "rush" ? Math.exp(-Math.max(0, pick.expRushAtt)) : 0;
+  const live = 1 - zero;
+  if (!(live > 0)) return 0;
+  return live * coverOver(mean / live, line, "yards", cvOf(market, pick.pos));
 }
 
 export function actualOf(market: NflMarket, actual: NflActual | null): number | null {
