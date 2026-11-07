@@ -24,6 +24,34 @@ export type BookCard = {
 };
 
 export const BOOK: BookCard[] = [
+  // Nov 6. Model p is the mean of the fast and play-by-play engines. The play-by-play engine was
+  // set aside as miscalibrated that night; it had Maxey 29%, Brown assists 37%, Luka assists 39%, and was closer.
+  {
+    date: "2026-11-06",
+    title: "NBA 5-leg, Hard Rock +779",
+    result: "miss",
+    legs: [
+      { name: "Tyrese Maxey", market: "points", side: "over", line: 25.5, actual: 17, result: "miss", model: { sport: "nba", key: "pts", p: 0.42 }, price: -108, opposite: -112 },
+      { name: "Jaylen Brown", market: "assists", side: "over", line: 3.5, actual: 5, result: "hit", model: { sport: "nba", key: "ast", p: 0.469 }, price: 100 },
+      { name: "76ers", market: "moneyline", side: "over", line: 0.5, actual: 0, result: "miss", price: -148, opposite: 124 },
+      { name: "Luka Doncic", market: "assists", side: "over", line: 6.5, actual: 5, result: "miss", model: { sport: "nba", key: "ast", p: 0.491 } },
+      { name: "Spurs", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -990, opposite: 650 },
+    ],
+  },
+  {
+    // Shared legs are graded once, on the card above.
+    date: "2026-11-06",
+    title: "NBA 6-leg spread-out version (option A)",
+    result: "miss",
+    legs: [
+      { name: "Tyrese Maxey", market: "points", side: "over", line: 25.5, actual: 17, result: "miss" },
+      { name: "Jaylen Brown", market: "assists", side: "over", line: 3.5, actual: 5, result: "hit" },
+      { name: "Luka Doncic", market: "assists", side: "over", line: 6.5, actual: 5, result: "miss" },
+      { name: "Spurs", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit" },
+      { name: "Mavericks", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -277, opposite: 227 },
+      { name: "Celtics", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -344, opposite: 276 },
+    ],
+  },
   // Nov 5, both placed on Hard Rock. Model p is the mean of the fast and play-by-play engines
   // (they disagreed on several legs), after the live injury check with Tuten active.
   {
