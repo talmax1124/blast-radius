@@ -24,6 +24,20 @@ export type BookCard = {
 };
 
 export const BOOK: BookCard[] = [
+  // Nov 7, placed on Hard Rock. First card built with the consensus filter; model p is the mean of both engines.
+  {
+    date: "2026-11-07",
+    title: "NBA 6-leg (placed), about +922",
+    result: "miss",
+    legs: [
+      { name: "Nikola Jokic", market: "points", side: "under", line: 26.5, actual: 19, result: "hit", model: { sport: "nba", key: "pts-under", p: 0.609 }, price: -118, opposite: -102 },
+      { name: "Evan Mobley", market: "points", side: "under", line: 19.5, actual: 12, result: "hit", model: { sport: "nba", key: "pts-under", p: 0.672 }, price: -115, opposite: -105 },
+      { name: "Thunder", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -598, opposite: 443 },
+      { name: "Warriors", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -273, opposite: 224 },
+      { name: "Rockets", market: "moneyline", side: "over", line: 0.5, actual: 0, result: "miss", price: -270, opposite: 221 },
+      { name: "Hawks", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -283, opposite: 231 },
+    ],
+  },
   // Nov 6. Model p is the mean of the fast and play-by-play engines. The play-by-play engine was
   // set aside as miscalibrated that night; it had Maxey 29%, Brown assists 37%, Luka assists 39%, and was closer.
   {
