@@ -24,6 +24,43 @@ export type BookCard = {
 };
 
 export const BOOK: BookCard[] = [
+  // Nov 8. Model p is the mean of the fast and play-by-play engines.
+  {
+    date: "2026-11-08",
+    title: "Week 10 NFL one-prop-per-game card (built, not placed whole)",
+    result: "miss",
+    legs: [
+      { name: "Bijan Robinson", market: "rushing yards", side: "over", line: 96.5, actual: 100, result: "hit", model: { sport: "nfl", key: "rush", p: 0.629 }, price: -105 },
+      { name: "Jonathan Taylor", market: "rushing yards", side: "under", line: 69.5, actual: 46, result: "hit", model: { sport: "nfl", key: "rush-under", p: 0.55 }, price: -105 },
+      { name: "Cowboys at Colts", market: "total points", side: "under", line: 51.5, actual: 50, result: "hit", model: { sport: "nfl", key: "total-under", p: 0.59 }, price: -110, opposite: -110 },
+      { name: "Travis Kelce", market: "receptions", side: "under", line: 4.5, actual: 4, result: "hit", model: { sport: "nfl", key: "rec-under", p: 0.728 }, price: -116, opposite: -104 },
+      { name: "Jahmyr Gibbs", market: "rushing yards", side: "over", line: 98.5, actual: 74, result: "miss", model: { sport: "nfl", key: "rush", p: 0.6 }, price: -115, opposite: -105 },
+      { name: "Denzel Boston", market: "receptions", side: "under", line: 3.5, actual: 6, result: "miss", model: { sport: "nfl", key: "rec-under", p: 0.713 }, price: -165 },
+      // Emergency starter with no NFL snaps: the model had no rushing history and missed a mobile QB.
+      { name: "Joe Milton", market: "rushing yards", side: "under", line: 22.5, actual: 64, result: "miss", model: { sport: "nfl", key: "rush-under", p: 0.807 }, price: -105, opposite: -115 },
+      { name: "Stefon Diggs", market: "receiving yards", side: "over", line: 49.5, actual: 51, result: "hit", model: { sport: "nfl", key: "recyd", p: 0.683 }, price: -110, opposite: -110 },
+      { name: "Bryce Young", market: "rushing yards", side: "under", line: 6.5, actual: 13, result: "miss", model: { sport: "nfl", key: "rush-under", p: 0.731 }, price: -100 },
+      { name: "Dalton Schultz", market: "receptions", side: "under", line: 4.5, actual: 2, result: "hit", model: { sport: "nfl", key: "rec-under", p: 0.694 }, price: -167 },
+      { name: "Rhamondre Stevenson", market: "receiving yards", side: "under", line: 25.5, actual: 46, result: "miss", model: { sport: "nfl", key: "recyd-under", p: 0.682 }, price: -115 },
+      { name: "George Kittle", market: "receptions", side: "under", line: 6.5, actual: 4, result: "hit", model: { sport: "nfl", key: "rec-under", p: 0.835 }, price: -151 },
+      { name: "Trey McBride", market: "receptions", side: "under", line: 7.5, actual: 7, result: "hit", model: { sport: "nfl", key: "rec-under", p: 0.704 }, price: -148 },
+      { name: "Bucky Irving", market: "anytime touchdown", side: "over", line: 0.5, actual: 2, result: "hit", model: { sport: "nfl", key: "atd", p: 0.548 }, price: 106 },
+    ],
+  },
+  {
+    // Placed: card A with the Celtics moneyline in place of Tatum assists. McBride and Kittle are graded on the card above.
+    date: "2026-11-08",
+    title: "4 PM NFL + NBA 5-leg (placed, Celtics ML version)",
+    result: "miss",
+    legs: [
+      { name: "Trey McBride", market: "receptions", side: "under", line: 7.5, actual: 7, result: "hit" },
+      { name: "George Kittle", market: "receptions", side: "under", line: 6.5, actual: 4, result: "hit" },
+      { name: "Giannis Antetokounmpo", market: "points", side: "under", line: 29.5, actual: 29, result: "hit", model: { sport: "nba", key: "pts-under", p: 0.597 }, price: -102, opposite: -118 },
+      { name: "Celtics", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -740, opposite: 527 },
+      // Luka was ruled out; Austin Reaves scored 43 and the Lakers won 121-116.
+      { name: "Pistons", market: "moneyline", side: "over", line: 0.5, actual: 0, result: "miss", price: -264, opposite: 217 },
+    ],
+  },
   // Nov 7, placed on Hard Rock. First card built with the consensus filter; model p is the mean of both engines.
   {
     date: "2026-11-07",
