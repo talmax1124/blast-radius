@@ -24,6 +24,116 @@ export type BookCard = {
 };
 
 export const BOOK: BookCard[] = [
+  // Nov 9. Model p is the mean of the fast and play-by-play engines. Prop prices on the SGPs were not posted to us, so only quoted prices are kept.
+  {
+    date: "2026-11-09",
+    title: "MNF + NBA 6-man (Cade under 8.5 version)",
+    result: "miss",
+    legs: [
+      { name: "James Cook III", market: "rushing yards", side: "over", line: 80.5, actual: 107, result: "hit", model: { sport: "nfl", key: "rush", p: 0.594 }, price: -110, opposite: -110 },
+      { name: "James Cook III", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit", model: { sport: "nfl", key: "atd", p: 0.566 }, price: -110, opposite: -110 },
+      { name: "Cade Cunningham", market: "assists", side: "under", line: 8.5, actual: 7, result: "hit", model: { sport: "nba", key: "ast-under", p: 0.625 }, price: 100 },
+      { name: "Cedric Coward", market: "rebounds", side: "over", line: 6.5, actual: 6, result: "miss", model: { sport: "nba", key: "reb", p: 0.532 }, price: -102, opposite: -118 },
+      { name: "Mavericks", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -170, opposite: 143 },
+      { name: "Donovan Mitchell", market: "threes", side: "over", line: 2.5, actual: 1, result: "miss", model: { sport: "nba", key: "threes", p: 0.537 }, price: -114, opposite: -106 },
+    ],
+  },
+  {
+    date: "2026-11-09",
+    title: "SGP LAL@ATL: Reaves under 22.5 + Hawks ML",
+    result: "miss",
+    legs: [
+      // Reaves did not play.
+      { name: "Austin Reaves", market: "points", side: "under", line: 22.5, actual: null, result: "void" },
+      { name: "Hawks", market: "moneyline", side: "over", line: 0.5, actual: 0, result: "miss", price: -119, opposite: 101 },
+    ],
+  },
+  {
+    date: "2026-11-09",
+    title: "SGP CLE@CHA: Naz Reid over 1.5 threes + Cavaliers ML",
+    result: "miss",
+    legs: [
+      { name: "Naz Reid", market: "threes", side: "over", line: 1.5, actual: 4, result: "hit", model: { sport: "nba", key: "threes", p: 0.616 } },
+      { name: "Cavaliers", market: "moneyline", side: "over", line: 0.5, actual: 0, result: "miss", price: -337, opposite: 270 },
+    ],
+  },
+  {
+    date: "2026-11-09",
+    title: "SGP WSH@DET: Davis under 31.5 PRA + Duncan Robinson over 2.5 threes",
+    result: "miss",
+    legs: [
+      { name: "Anthony Davis", market: "pts+reb+ast", side: "under", line: 31.5, actual: 58, result: "miss", model: { sport: "nba", key: "pra-under", p: 0.663 } },
+      { name: "Duncan Robinson", market: "threes", side: "over", line: 2.5, actual: 4, result: "hit", model: { sport: "nba", key: "threes", p: 0.622 } },
+    ],
+  },
+  // SGP MEM@TOR (Barnes under 33.5 PRA + Quickley under 5.5 assists) voided: neither played.
+  {
+    date: "2026-11-09",
+    title: "SGP IND@DAL: Flagg over 5.5 rebounds + Mavericks ML",
+    result: "hit",
+    legs: [
+      { name: "Cooper Flagg", market: "rebounds", side: "over", line: 5.5, actual: 10, result: "hit", model: { sport: "nba", key: "reb", p: 0.586 } },
+      { name: "Mavericks", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit" },
+    ],
+  },
+  {
+    date: "2026-11-09",
+    title: "SGP DEN@HOU: Jokic under 43.5 PRA + Rockets ML",
+    result: "miss",
+    legs: [
+      { name: "Nikola Jokic", market: "pts+reb+ast", side: "under", line: 43.5, actual: 50, result: "miss", model: { sport: "nba", key: "pra-under", p: 0.637 } },
+      { name: "Rockets", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -173, opposite: 146 },
+    ],
+  },
+  {
+    date: "2026-11-09",
+    title: "SGP SA@PHX: Booker under 24.5 + Spurs ML",
+    result: "miss",
+    legs: [
+      { name: "Devin Booker", market: "points", side: "under", line: 24.5, actual: 32, result: "miss", model: { sport: "nba", key: "pts-under", p: 0.577 } },
+      { name: "Spurs", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -372, opposite: 296 },
+    ],
+  },
+  {
+    date: "2026-11-09",
+    title: "SGP NO@GS: Podziemski over 1.5 threes + Bey over 3.5 rebounds",
+    result: "miss",
+    legs: [
+      { name: "Brandin Podziemski", market: "threes", side: "over", line: 1.5, actual: 5, result: "hit", model: { sport: "nba", key: "threes", p: 0.615 } },
+      { name: "Saddiq Bey", market: "rebounds", side: "over", line: 3.5, actual: 0, result: "miss", model: { sport: "nba", key: "reb", p: 0.609 } },
+    ],
+  },
+  {
+    // Built, not placed. Reaves and Barnes voided; legs are graded on the SGP cards above.
+    date: "2026-11-09",
+    title: "NBA 6-leg mega (one prop per game)",
+    result: "miss",
+    legs: [
+      { name: "Austin Reaves", market: "points", side: "under", line: 22.5, actual: null, result: "void" },
+      { name: "Naz Reid", market: "threes", side: "over", line: 1.5, actual: 4, result: "hit" },
+      { name: "Anthony Davis", market: "pts+reb+ast", side: "under", line: 31.5, actual: 58, result: "miss" },
+      { name: "Scottie Barnes", market: "pts+reb+ast", side: "under", line: 33.5, actual: null, result: "void" },
+      { name: "Nikola Jokic", market: "pts+reb+ast", side: "under", line: 43.5, actual: 50, result: "miss" },
+      { name: "Brandin Podziemski", market: "threes", side: "over", line: 1.5, actual: 5, result: "hit" },
+    ],
+  },
+  {
+    // The alternate pair in each game and the two extra mega legs. Built, not placed.
+    date: "2026-11-09",
+    title: "NBA alternate SGP legs",
+    result: "miss",
+    legs: [
+      { name: "Pascal Siakam", market: "rebounds", side: "over", line: 5.5, actual: 9, result: "hit", model: { sport: "nba", key: "reb", p: 0.589 } },
+      { name: "Dillon Brooks", market: "threes", side: "over", line: 1.5, actual: 1, result: "miss", model: { sport: "nba", key: "threes", p: 0.594 } },
+      { name: "Onyeka Okongwu", market: "threes", side: "under", line: 1.5, actual: 2, result: "miss", model: { sport: "nba", key: "threes-under", p: 0.568 } },
+      { name: "Evan Mobley", market: "rebounds", side: "over", line: 7.5, actual: 2, result: "miss", model: { sport: "nba", key: "reb", p: 0.579 } },
+      { name: "Jamal Murray", market: "pts+reb+ast", side: "under", line: 33.5, actual: 42, result: "miss", model: { sport: "nba", key: "pra-under", p: 0.613 } },
+      { name: "Miles Bridges", market: "assists", side: "over", line: 2.5, actual: 0, result: "miss", model: { sport: "nba", key: "ast", p: 0.58 } },
+      { name: "Grizzlies at Raptors", market: "total points", side: "under", line: 227.5, actual: 220, result: "hit", model: { sport: "nba", key: "total-under", p: 0.508 }, price: -110, opposite: -110 },
+      { name: "Wizards at Pistons", market: "total points", side: "under", line: 219.5, actual: 233, result: "miss", model: { sport: "nba", key: "total-under", p: 0.503 }, price: -110, opposite: -110 },
+      { name: "Pelicans", market: "spread", side: "over", line: 11.5, actual: -51, result: "miss", price: -110, opposite: -110 },
+    ],
+  },
   // Nov 8. Model p is the mean of the fast and play-by-play engines.
   {
     date: "2026-11-08",
