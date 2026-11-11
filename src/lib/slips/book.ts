@@ -24,6 +24,86 @@ export type BookCard = {
 };
 
 export const BOOK: BookCard[] = [
+  // Nov 10. Built, not confirmed placed. Prices are DraftKings via ESPN (Hard Rock was not readable); the legs were alternate lines, priced far past -115.
+  {
+    // Herro did not play and his leg voided.
+    date: "2026-11-10",
+    title: "3-SGP mega: Herro/Knicks, Peterson/Heat, Bane/Magic (Hard Rock +600)",
+    result: "hit",
+    legs: [
+      { name: "Tyler Herro", market: "rebounds", side: "under", line: 4.5, actual: null, result: "void" },
+      { name: "Knicks", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -1040, opposite: 670 },
+      { name: "Darryn Peterson", market: "threes", side: "over", line: 1.5, actual: 4, result: "hit", model: { sport: "nba", key: "threes", p: 0.607 }, price: -304 },
+      { name: "Heat", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -406, opposite: 319 },
+      { name: "Desmond Bane", market: "assists", side: "over", line: 2.5, actual: 4, result: "hit", model: { sport: "nba", key: "ast", p: 0.629 }, price: -199 },
+      { name: "Magic", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", price: -229, opposite: 190 },
+    ],
+  },
+  {
+    date: "2026-11-10",
+    title: "NBA 4-leg (Hard Rock +443)",
+    result: "hit",
+    legs: [
+      { name: "Jayson Tatum", market: "threes", side: "over", line: 1.5, actual: 3, result: "hit", model: { sport: "nba", key: "threes", p: 0.643 }, price: -367 },
+      { name: "Tyler Herro", market: "rebounds", side: "under", line: 4.5, actual: null, result: "void" },
+      { name: "Desmond Bane", market: "assists", side: "over", line: 2.5, actual: 4, result: "hit" },
+      { name: "Jrue Holiday", market: "threes", side: "over", line: 1.5, actual: 2, result: "hit", model: { sport: "nba", key: "threes", p: 0.622 }, price: -253 },
+    ],
+  },
+  {
+    date: "2026-11-10",
+    title: "SGP MIL@NY: Herro under 4.5 rebounds + Anunoby over 1.5 threes",
+    result: "hit",
+    legs: [
+      { name: "Tyler Herro", market: "rebounds", side: "under", line: 4.5, actual: null, result: "void" },
+      { name: "OG Anunoby", market: "threes", side: "over", line: 1.5, actual: 5, result: "hit", model: { sport: "nba", key: "threes", p: 0.613 }, price: -245 },
+    ],
+  },
+  {
+    date: "2026-11-10",
+    title: "SGP BOS@PHI: Tatum + Pritchard over 1.5 threes",
+    result: "hit",
+    legs: [
+      { name: "Jayson Tatum", market: "threes", side: "over", line: 1.5, actual: 3, result: "hit" },
+      { name: "Payton Pritchard", market: "threes", side: "over", line: 1.5, actual: 4, result: "hit", model: { sport: "nba", key: "threes", p: 0.605 }, price: -186, opposite: 141 },
+    ],
+  },
+  {
+    date: "2026-11-10",
+    title: "SGP LAC@PHX: Jones Jr. over 3.5 rebounds + Brooks over 1.5 threes",
+    result: "miss",
+    legs: [
+      { name: "Derrick Jones Jr.", market: "rebounds", side: "over", line: 3.5, actual: 3, result: "miss", model: { sport: "nba", key: "reb", p: 0.601 }, price: -293 },
+      { name: "Dillon Brooks", market: "threes", side: "over", line: 1.5, actual: 0, result: "miss", model: { sport: "nba", key: "threes", p: 0.601 }, price: -153, opposite: 116 },
+    ],
+  },
+  {
+    date: "2026-11-10",
+    title: "SGP MIA@UTAH: Peterson over 1.5 threes + Hayes over 4.5 rebounds",
+    result: "miss",
+    legs: [
+      { name: "Darryn Peterson", market: "threes", side: "over", line: 1.5, actual: 4, result: "hit" },
+      { name: "Jaxson Hayes", market: "rebounds", side: "over", line: 4.5, actual: 2, result: "miss", model: { sport: "nba", key: "reb", p: 0.585 }, price: -418 },
+    ],
+  },
+  {
+    date: "2026-11-10",
+    title: "SGP ORL@SAC: Bane over 2.5 + Black over 3.5 assists",
+    result: "hit",
+    legs: [
+      { name: "Desmond Bane", market: "assists", side: "over", line: 2.5, actual: 4, result: "hit" },
+      { name: "Anthony Black", market: "assists", side: "over", line: 3.5, actual: 5, result: "hit", model: { sport: "nba", key: "ast", p: 0.611 }, price: -300 },
+    ],
+  },
+  {
+    date: "2026-11-10",
+    title: "SGP OKC@POR: Holiday + Gilgeous-Alexander over 1.5 threes",
+    result: "miss",
+    legs: [
+      { name: "Jrue Holiday", market: "threes", side: "over", line: 1.5, actual: 2, result: "hit" },
+      { name: "Shai Gilgeous-Alexander", market: "threes", side: "over", line: 1.5, actual: 0, result: "miss", model: { sport: "nba", key: "threes", p: 0.604 }, price: -250 },
+    ],
+  },
   // Nov 9. Model p is the mean of the fast and play-by-play engines. Prop prices on the SGPs were not posted to us, so only quoted prices are kept.
   {
     date: "2026-11-09",
