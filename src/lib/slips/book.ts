@@ -24,6 +24,22 @@ export type BookCard = {
 };
 
 export const BOOK: BookCard[] = [
+  {
+    // The user's own research, placed on Hard Rock. No model p, so it does not train calibration.
+    // Curry left in the 1st quarter after 6 minutes; Hard Rock keeps props live once a player checks in.
+    date: "2026-11-11",
+    title: "Placed: GS@HOU SGP + Ziaire Williams + Ty Jerome (user's picks)",
+    result: "miss",
+    legs: [
+      { name: "Brandin Podziemski", market: "pts+reb+ast", side: "over", line: 22.5, actual: 32, result: "hit" },
+      { name: "Stephen Curry", market: "threes", side: "over", line: 2.5, actual: 1, result: "miss" },
+      { name: "Stephen Curry", market: "points", side: "over", line: 26.5, actual: 3, result: "miss" },
+      { name: "Yaxel Lendeborg", market: "reb+ast", side: "over", line: 10.5, actual: 10, result: "miss" },
+      { name: "Draymond Green", market: "reb+ast", side: "over", line: 10.5, actual: 12, result: "hit" },
+      { name: "Ziaire Williams", market: "points", side: "over", line: 8.5, actual: 9, result: "hit", price: -115 },
+      { name: "Ty Jerome", market: "points", side: "over", line: 19.5, actual: 22, result: "hit", price: -180 },
+    ],
+  },
   // Nov 11. First card priced off real DraftKings main lines (ESPN feed). Model p is the mean of both engines; graded legs carry the DK price.
   {
     date: "2026-11-11",
