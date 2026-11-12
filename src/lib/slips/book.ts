@@ -24,6 +24,70 @@ export type BookCard = {
 };
 
 export const BOOK: BookCard[] = [
+  // Nov 11. First card priced off real DraftKings main lines (ESPN feed). Model p is the mean of both engines; graded legs carry the DK price.
+  {
+    date: "2026-11-11",
+    title: "8 PM+ NBA 12-leg list (all legs I thought would hit)",
+    result: "miss",
+    legs: [
+      { name: "Al Horford", market: "rebounds", side: "over", line: 3.5, actual: 1, result: "miss", model: { sport: "nba", key: "reb", p: 0.628 }, price: 112, opposite: -148 },
+      { name: "Georges Niang", market: "pts+reb+ast", side: "over", line: 11.5, actual: 10, result: "miss", model: { sport: "nba", key: "pra", p: 0.592 }, price: -106, opposite: -124 },
+      { name: "Yaxel Lendeborg", market: "pts+reb+ast", side: "under", line: 28.5, actual: 35, result: "miss", model: { sport: "nba", key: "pra-under", p: 0.632 }, price: -121, opposite: -109 },
+      { name: "Tari Eason", market: "pts+reb+ast", side: "over", line: 14.5, actual: 9, result: "miss", model: { sport: "nba", key: "pra", p: 0.626 }, price: -129, opposite: -102 },
+      { name: "Nic Claxton", market: "rebounds", side: "over", line: 5.5, actual: 6, result: "hit", model: { sport: "nba", key: "reb", p: 0.608 }, price: 114, opposite: -150 },
+      { name: "Ryan Rollins", market: "rebounds", side: "over", line: 3.5, actual: 7, result: "hit", model: { sport: "nba", key: "reb", p: 0.598 }, price: 123, opposite: -163 },
+      { name: "Jerami Grant", market: "pts+reb+ast", side: "over", line: 15.5, actual: 18, result: "hit", model: { sport: "nba", key: "pra", p: 0.628 }, price: -103, opposite: -128 },
+      { name: "Cameron Boozer", market: "assists", side: "under", line: 4.5, actual: 5, result: "miss", model: { sport: "nba", key: "ast-under", p: 0.619 }, price: 120, opposite: -158 },
+      { name: "Derik Queen", market: "pts+reb+ast", side: "over", line: 18.5, actual: 9, result: "miss", model: { sport: "nba", key: "pra", p: 0.652 }, price: -121, opposite: -108 },
+      { name: "Danny Wolf", market: "assists", side: "under", line: 2.5, actual: 4, result: "miss", model: { sport: "nba", key: "ast-under", p: 0.612 }, price: -103, opposite: -128 },
+      { name: "Tristan da Silva", market: "threes", side: "under", line: 2.5, actual: null, result: "void" },
+      { name: "Aday Mara", market: "points", side: "under", line: 10.5, actual: 11, result: "miss", model: { sport: "nba", key: "pts-under", p: 0.648 }, price: -110, opposite: -116 },
+    ],
+  },
+  {
+    date: "2026-11-11",
+    title: "GS@HOU 4-leg SGP",
+    result: "miss",
+    legs: [
+      { name: "Al Horford", market: "rebounds", side: "over", line: 3.5, actual: 1, result: "miss" },
+      { name: "Georges Niang", market: "pts+reb+ast", side: "over", line: 11.5, actual: 10, result: "miss" },
+      { name: "Yaxel Lendeborg", market: "pts+reb+ast", side: "under", line: 28.5, actual: 35, result: "miss" },
+      { name: "Tari Eason", market: "pts+reb+ast", side: "over", line: 14.5, actual: 9, result: "miss" },
+    ],
+  },
+  {
+    date: "2026-11-11",
+    title: "6-leg: GS@HOU four + Claxton + Rollins",
+    result: "miss",
+    legs: [
+      { name: "Al Horford", market: "rebounds", side: "over", line: 3.5, actual: 1, result: "miss" },
+      { name: "Georges Niang", market: "pts+reb+ast", side: "over", line: 11.5, actual: 10, result: "miss" },
+      { name: "Yaxel Lendeborg", market: "pts+reb+ast", side: "under", line: 28.5, actual: 35, result: "miss" },
+      { name: "Tari Eason", market: "pts+reb+ast", side: "over", line: 14.5, actual: 9, result: "miss" },
+      { name: "Nic Claxton", market: "rebounds", side: "over", line: 5.5, actual: 6, result: "hit" },
+      { name: "Ryan Rollins", market: "rebounds", side: "over", line: 3.5, actual: 7, result: "hit" },
+    ],
+  },
+  {
+    date: "2026-11-11",
+    title: "3-leg plus-money rebounds",
+    result: "miss",
+    legs: [
+      { name: "Nic Claxton", market: "rebounds", side: "over", line: 5.5, actual: 6, result: "hit" },
+      { name: "Ryan Rollins", market: "rebounds", side: "over", line: 3.5, actual: 7, result: "hit" },
+      { name: "Al Horford", market: "rebounds", side: "over", line: 3.5, actual: 1, result: "miss" },
+    ],
+  },
+  {
+    // Mentioned as good value near 50%; graded so the scorecard sees them.
+    date: "2026-11-11",
+    title: "Value legs named but left off the list",
+    result: "hit",
+    legs: [
+      { name: "Marcus Smart", market: "threes", side: "over", line: 1.5, actual: 2, result: "hit", model: { sport: "nba", key: "threes", p: 0.469 }, price: 159, opposite: -212 },
+      { name: "De'Anthony Melton", market: "rebounds", side: "over", line: 3.5, actual: 4, result: "hit", model: { sport: "nba", key: "reb", p: 0.504 }, price: 125, opposite: -165 },
+    ],
+  },
   // Nov 10. Built, not confirmed placed. Prices are DraftKings via ESPN (Hard Rock was not readable); the legs were alternate lines, priced far past -115.
   {
     // Herro did not play and his leg voided.
