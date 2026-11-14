@@ -2,6 +2,7 @@ import type { SlipCard } from "../mlb/types.ts";
 import type { NflBoard, NflMarket, NflPick } from "../nfl/types.ts";
 import { marketLabel as nflMarketLabel } from "../nfl/slips.ts";
 import type { NhlBoard, NhlSkater } from "../nhl/types.ts";
+import { breakevenLeg, priceSlip } from "./payout.ts";
 import type { BoardLeg, BoardSlip, HeatCell, Sport, SpotSize, TennisMatch } from "./types";
 
 const SIZES: SpotSize[] = [2, 3, 4, 6];
@@ -116,6 +117,8 @@ export function nflLegs(board: NflBoard): BoardLeg[] {
     const final = pick.gameState === "post";
     for (const quote of pick.quotes) {
       if (quote.cover == null || quote.cover < 0.5) continue;
+      // Demon and goblin lines pay off a different table. The payout math here is the standard one.
+      if (quote.oddsType !== "standard") continue;
       const id = legId(board.date, "nfl", pick.gameId, pick.id, quote.market);
       if (seen.has(id)) continue;
       seen.add(id);
@@ -199,23 +202,50 @@ export function tennisLegs(date: string, matches: TennisMatch[]): BoardLeg[] {
   return out.sort((x, y) => y.p - x.p);
 }
 
+/** Room a leg needs over the flat break-even of its slip. Under this, the payout is doing the work, not the leg. */
+const EDGE = 0.02;
+
+/** Lowest leg chance worth a spot on a slip of this size. Never under 56%. */
+export function legFloor(size: number): number {
+  const power = breakevenLeg(size, "power") ?? 0.56;
+  const flex = breakevenLeg(size, "flex") ?? 1;
+  return Math.max(0.56, Math.min(power, flex) + EDGE);
+}
+
+/**
+ * Highest-chance legs, one per game and one per player.
+ * With independent legs the top chances also maximize both power and flex returns, so greedy is exact here.
+ * A mix also spreads markets and caps any one sport at half the card,
+ * so one miscalibrated model cannot sink every leg at once.
+ */
 export function takeLegs(pool: BoardLeg[], size: number, mix: boolean): BoardLeg[] | null {
-  const sorted = [...pool].filter((l) => l.p >= 0.56 && l.settled == null).sort((a, b) => b.p - a.p);
+  const floor = legFloor(size);
+  const sorted = [...pool].filter((l) => l.p >= floor && l.settled == null).sort((a, b) => b.p - a.p);
+  const sportCap = Math.max(1, Math.ceil(size / 2));
+  const multiSport = new Set(sorted.map((l) => l.sport)).size > 1;
   const usedGames = new Set<string>();
+  const usedPlayers = new Set<string>();
   const usedMarkets = new Set<string>();
+  const perSport = new Map<Sport, number>();
   const chosen: BoardLeg[] = [];
+  const open = (leg: BoardLeg) =>
+    !usedGames.has(leg.gameId) && !usedPlayers.has(`${leg.sport}:${leg.playerId}`);
   for (const leg of sorted) {
     if (chosen.length >= size) break;
-    if (usedGames.has(leg.gameId)) continue;
+    if (!open(leg)) continue;
+    if (mix && multiSport && (perSport.get(leg.sport) ?? 0) >= sportCap) {
+      const alt = sorted.some((o) => open(o) && o.sport !== leg.sport && (perSport.get(o.sport) ?? 0) < sportCap);
+      if (alt) continue;
+    }
     if (mix && usedMarkets.has(leg.market)) {
-      const alt = sorted.some(
-        (o) => !usedGames.has(o.gameId) && !usedMarkets.has(o.market) && o.p >= leg.p - 0.05,
-      );
+      const alt = sorted.some((o) => open(o) && !usedMarkets.has(o.market) && o.p >= leg.p - 0.05);
       if (alt) continue;
     }
     chosen.push(leg);
     usedGames.add(leg.gameId);
+    usedPlayers.add(`${leg.sport}:${leg.playerId}`);
     usedMarkets.add(leg.market);
+    perSport.set(leg.sport, (perSport.get(leg.sport) ?? 0) + 1);
   }
   return chosen.length === size ? chosen : null;
 }
@@ -232,6 +262,7 @@ export function buildSlips(legs: BoardLeg[], sport: Sport | "all"): BoardSlip[] 
       const picked = takeLegs(pool, size, kind === "mix");
       if (!picked) continue;
       const label = sport === "all" ? "All sports" : sport.toUpperCase();
+      const price = priceSlip(picked.map((leg) => leg.p));
       slips.push({
         id: `${sport}:${kind}:${size}`,
         sport,
@@ -240,15 +271,18 @@ export function buildSlips(legs: BoardLeg[], sport: Sport | "all"): BoardSlip[] 
         title: `${label} ${size}-spot ${kind === "mix" ? "mix" : "power"}`,
         sweep: sweepOf(picked),
         legs: picked,
+        ...price,
       });
     }
   }
   return slips;
 }
 
+/** The card at this size that holds up best when every leg is cut 3 points. */
 export function recommended(slips: BoardSlip[], size: SpotSize): BoardSlip | null {
-  const power = slips.find((s) => s.size === size && s.kind === "power");
-  return power ?? slips.find((s) => s.size === size) ?? null;
+  const pool = slips.filter((s) => s.size === size);
+  if (!pool.length) return null;
+  return pool.reduce((best, s) => ((s.stressed ?? 0) > (best.stressed ?? 0) ? s : best), pool[0]);
 }
 
 export function heatCells(legs: BoardLeg[]): HeatCell[] {
