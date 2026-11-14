@@ -24,6 +24,84 @@ export type BookCard = {
 };
 
 export const BOOK: BookCard[] = [
+  // Nov 12. NBA legs priced off DraftKings main lines; TNF lines from DraftKings without prices. TNF inputs wrongly had Cam Skattebo out (ESPN injury feed); he played.
+  {
+    date: "2026-11-12",
+    title: "NBA 4-leg unders (one per game)",
+    result: "miss",
+    legs: [
+      { name: "Ja'Kobe Walter", market: "assists", side: "under", line: 1.5, actual: 0, result: "hit", model: { sport: "nba", key: "ast-under", p: 0.551 }, price: -102, opposite: -130 },
+      { name: "Paul Reed", market: "rebounds", side: "under", line: 6.5, actual: 11, result: "miss", model: { sport: "nba", key: "reb-under", p: 0.577 }, price: -104, opposite: -127 },
+      { name: "Ayo Dosunmu", market: "rebounds", side: "under", line: 4.5, actual: 2, result: "hit", model: { sport: "nba", key: "reb-under", p: 0.609 }, price: -126, opposite: -104 },
+      { name: "Sion James", market: "rebounds", side: "under", line: 3.5, actual: 8, result: "miss", model: { sport: "nba", key: "reb-under", p: 0.578 }, price: -108, opposite: -121 },
+    ],
+  },
+  {
+    date: "2026-11-12",
+    title: "NBA 6-leg unders",
+    result: "miss",
+    legs: [
+      { name: "Ja'Kobe Walter", market: "assists", side: "under", line: 1.5, actual: 0, result: "hit" },
+      { name: "Paul Reed", market: "rebounds", side: "under", line: 6.5, actual: 11, result: "miss" },
+      { name: "Ayo Dosunmu", market: "rebounds", side: "under", line: 4.5, actual: 2, result: "hit" },
+      { name: "Sion James", market: "rebounds", side: "under", line: 3.5, actual: 8, result: "miss" },
+      { name: "AJ Dybantsa", market: "rebounds", side: "under", line: 5.5, actual: 8, result: "miss", model: { sport: "nba", key: "reb-under", p: 0.596 }, price: -113, opposite: -116 },
+      { name: "Jaden McDaniels", market: "rebounds", side: "under", line: 5.5, actual: 9, result: "miss", model: { sport: "nba", key: "reb-under", p: 0.581 }, price: -118, opposite: -112 },
+    ],
+  },
+  {
+    date: "2026-11-12",
+    title: "NBA unders listed but not on the cards",
+    result: "miss",
+    legs: [
+      { name: "Dean Wade", market: "rebounds", side: "under", line: 4.5, actual: 5, result: "miss", model: { sport: "nba", key: "reb-under", p: 0.624 }, price: -130, opposite: -101 },
+      { name: "Oso Ighodaro", market: "points", side: "under", line: 6.5, actual: 2, result: "hit", model: { sport: "nba", key: "pts-under", p: 0.605 }, price: -116, opposite: -110 },
+    ],
+  },
+  {
+    date: "2026-11-12",
+    title: "TNF props (WSH @ NYG)",
+    result: "miss",
+    legs: [
+      { name: "Stefon Diggs", market: "receptions", side: "over", line: 4.5, actual: 6, result: "hit", model: { sport: "nfl", key: "rec", p: 0.652 } },
+      { name: "Rachaad White", market: "rushing yards", side: "over", line: 37.5, actual: 47, result: "hit", model: { sport: "nfl", key: "rush", p: 0.653 } },
+      { name: "Austin Ekeler", market: "receptions", side: "under", line: 1.5, actual: 4, result: "miss", model: { sport: "nfl", key: "rec-under", p: 0.649 } },
+      { name: "Malachi Fields", market: "receptions", side: "under", line: 2.5, actual: 3, result: "miss", model: { sport: "nfl", key: "rec-under", p: 0.633 } },
+      { name: "Malik Nabers", market: "receptions", side: "under", line: 5.5, actual: 5, result: "hit", model: { sport: "nfl", key: "rec-under", p: 0.587 } },
+    ],
+  },
+  {
+    date: "2026-11-12",
+    title: "TNF anytime TD pair: Diggs + White",
+    result: "miss",
+    legs: [
+      { name: "Stefon Diggs", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit", model: { sport: "nfl", key: "atd", p: 0.354 } },
+      { name: "Rachaad White", market: "anytime touchdown", side: "over", line: 0.5, actual: 0, result: "miss", model: { sport: "nfl", key: "atd", p: 0.343 } },
+    ],
+  },
+  {
+    // Second-half legs come from the fast engine only (the play-by-play engine cannot start at halftime).
+    date: "2026-11-12",
+    title: "2H slip: Nabers 2H over 2.5 rec + Diggs 2H over 1.5 rec + Likely 2H TD",
+    result: "miss",
+    legs: [
+      { name: "Malik Nabers", market: "2H receptions", side: "over", line: 2.5, actual: 2, result: "miss", model: { sport: "nfl", key: "rec-2h", p: 0.659 } },
+      { name: "Stefon Diggs", market: "2H receptions", side: "over", line: 1.5, actual: 4, result: "hit", model: { sport: "nfl", key: "rec-2h", p: 0.566 } },
+      { name: "Isaiah Likely", market: "2H anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit", model: { sport: "nfl", key: "atd-2h", p: 0.395 } },
+    ],
+  },
+  {
+    date: "2026-11-12",
+    title: "Confident 2H 5-man",
+    result: "hit",
+    legs: [
+      { name: "Isaiah Likely", market: "2H receptions", side: "over", line: 0.5, actual: 4, result: "hit", model: { sport: "nfl", key: "rec-2h", p: 0.928 } },
+      { name: "Commanders at Giants", market: "2H total points", side: "over", line: 10.5, actual: 28, result: "hit", model: { sport: "nfl", key: "total-2h", p: 0.891 } },
+      { name: "Malik Nabers", market: "2H receptions", side: "over", line: 1.5, actual: 2, result: "hit", model: { sport: "nfl", key: "rec-2h", p: 0.853 } },
+      { name: "Stefon Diggs", market: "2H receptions", side: "over", line: 0.5, actual: 4, result: "hit", model: { sport: "nfl", key: "rec-2h", p: 0.851 } },
+      { name: "Cam Skattebo", market: "2H rushing yards", side: "over", line: 14.5, actual: 43, result: "hit", model: { sport: "nfl", key: "rush-2h", p: 0.767 } },
+    ],
+  },
   {
     // The user's own research, placed on Hard Rock. No model p, so it does not train calibration.
     // Curry left in the 1st quarter after 6 minutes; Hard Rock keeps props live once a player checks in.
