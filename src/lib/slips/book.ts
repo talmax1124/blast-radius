@@ -24,6 +24,32 @@ export type BookCard = {
 };
 
 export const BOOK: BookCard[] = [
+  {
+    // Placed on Hard Rock. Curry, Butler, Porzingis and Moody were out; Spurs won 123-85.
+    date: "2026-11-13",
+    title: "Placed: GS@SA 4-leg SGP + Claxton over 2.5 assists + Wagler over 1.5 threes",
+    result: "miss",
+    legs: [
+      { name: "De'Aaron Fox", market: "pts+reb+ast", side: "under", line: 23.5, actual: 13, result: "hit", model: { sport: "nba", key: "pra-under", p: 0.610 }, price: -113, opposite: -116 },
+      { name: "Brandin Podziemski", market: "threes", side: "under", line: 2.5, actual: 2, result: "hit", model: { sport: "nba", key: "threes-under", p: 0.608 }, price: -118, opposite: -112 },
+      { name: "Devin Vassell", market: "threes", side: "under", line: 1.5, actual: 0, result: "hit", model: { sport: "nba", key: "threes-under", p: 0.533 }, price: 104, opposite: -137 },
+      { name: "Stephon Castle", market: "assists", side: "under", line: 5.5, actual: 6, result: "miss", model: { sport: "nba", key: "ast-under", p: 0.560 }, price: -105, opposite: -125 },
+      { name: "Nic Claxton", market: "assists", side: "over", line: 2.5, actual: 2, result: "miss", model: { sport: "nba", key: "ast", p: 0.586 }, price: 142, opposite: -188 },
+      { name: "Keaton Wagler", market: "threes", side: "over", line: 1.5, actual: 2, result: "hit", model: { sport: "nba", key: "threes", p: 0.513 }, price: 140, opposite: -186 },
+    ],
+  },
+  {
+    date: "2026-11-13",
+    title: "Extra legs from the 7-leg version",
+    result: "miss",
+    legs: [
+      { name: "Josh Giddey", market: "assists", side: "under", line: 8.5, actual: 14, result: "miss", model: { sport: "nba", key: "ast-under", p: 0.561 }, price: 101, opposite: -133 },
+      { name: "Andrew Wiggins", market: "threes", side: "under", line: 1.5, actual: 1, result: "hit", model: { sport: "nba", key: "threes-under", p: 0.552 }, price: 106, opposite: -140 },
+      { name: "Josh Green", market: "points", side: "under", line: 4.5, actual: 2, result: "hit", model: { sport: "nba", key: "pts-under", p: 0.589 }, price: -108, opposite: -118 },
+      { name: "Darius Acuff Jr.", market: "assists", side: "under", line: 6.5, actual: 6, result: "hit", model: { sport: "nba", key: "ast-under", p: 0.574 }, price: -105, opposite: -126 },
+      { name: "Mario Hezonja", market: "pts+reb+ast", side: "under", line: 13.5, actual: 8, result: "hit", model: { sport: "nba", key: "pra-under", p: 0.575 }, price: -107, opposite: -123 },
+    ],
+  },
   // Nov 12. NBA legs priced off DraftKings main lines; TNF lines from DraftKings without prices. TNF inputs wrongly had Cam Skattebo out (ESPN injury feed); he played.
   {
     date: "2026-11-12",
