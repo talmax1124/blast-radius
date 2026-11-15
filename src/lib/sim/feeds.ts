@@ -139,3 +139,38 @@ export async function nflPassShare(team: string, season: number, qb: string): Pr
   }
   return { share: all > 0 ? mine / all : 1, attempts: mine, teamAttempts: all };
 }
+
+/**
+ * The game's own injury list from ESPN's event summary. It is refreshed for the matchup, so it is a second
+ * opinion on the league-wide injury feed, which has kept stale "out" tags (Skattebo, Nov 12).
+ */
+export async function espnGameInjuries(league: League, eventId: string): Promise<InjuryRow[]> {
+  const d = await json(`${SITE}/${PATH[league]}/summary?event=${eventId}`);
+  const out: InjuryRow[] = [];
+  for (const t of d.injuries ?? []) {
+    const team = t.team?.abbreviation ?? "";
+    for (const i of t.injuries ?? []) out.push({ team, name: i.athlete?.displayName ?? "", status: parseStatus(i.status) });
+  }
+  return out;
+}
+
+/**
+ * Players DraftKings has props posted for in one event (from ESPN's odds feed). A book that still posts a
+ * player expects him to play; a book with nothing on a usual starter expects him out.
+ */
+export async function bookPlayers(league: League, eventId: string): Promise<Set<string>> {
+  const ids = new Set<string>();
+  for (let page = 1; ; page++) {
+    const d = await json(`${CORE}/${PATH[league].replace("/", "/leagues/")}/events/${eventId}/competitions/${eventId}/odds/100/propBets?limit=500&page=${page}`);
+    for (const it of d.items ?? []) {
+      const m = /athletes\/(\d+)/.exec(it.athlete?.$ref ?? "");
+      if (m) ids.add(m[1]);
+    }
+    if (page >= (d.pageCount ?? 1)) break;
+  }
+  const season = new Date().getUTCMonth() >= 7 ? new Date().getUTCFullYear() + (league === "nba" ? 1 : 0) : new Date().getUTCFullYear();
+  const names = await Promise.all([...ids].map(async (id) => {
+    try { return (await json(`${CORE}/${PATH[league].replace("/", "/leagues/")}/seasons/${season}/athletes/${id}`)).displayName as string; } catch { return null; }
+  }));
+  return new Set(names.filter((n): n is string => !!n));
+}

@@ -1,6 +1,6 @@
-import { describe, it } from "node:test";
+import { describe, it, test } from "node:test";
 import assert from "node:assert/strict";
-import { checkNbaRoster, checkNflRoster, needsReview, normName, parseStatus, type DepthRow } from "./roster.ts";
+import { checkNbaRoster, checkNflRoster, crossCheckOut, needsReview, normName, parseStatus, type DepthRow } from "./roster.ts";
 import { applyNflWeather, nflWeatherEffect } from "./weather.ts";
 import { blendMarket } from "../board/grade.ts";
 import { score, scorecard } from "./score.ts";
@@ -147,4 +147,13 @@ describe("engine consensus and backup quarterbacks", () => {
     assert.equal(fit[0].pts, 18);
     assert.ok(fit[12].minutes < 19);
   });
+});
+
+test("crossCheckOut keeps a player the book still posts and the game list does not tag", () => {
+  const feed = [{ team: "NYG", name: "Cam Skattebo", status: "out" as const }, { team: "TEN", name: "Carnell Tate", status: "out" as const }, { team: "WSH", name: "Terry McLaurin", status: "out" as const }];
+  const gameList = [{ team: "WSH", name: "Terry McLaurin", status: "out" as const }];
+  const r = crossCheckOut(feed, gameList, new Set(["Cam Skattebo", "Stefon Diggs"]));
+  assert.equal(r.find((x) => x.name === "Cam Skattebo")?.verdict, "playing");
+  assert.equal(r.find((x) => x.name === "Carnell Tate")?.verdict, "out");
+  assert.equal(r.find((x) => x.name === "Terry McLaurin")?.verdict, "out");
 });

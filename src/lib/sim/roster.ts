@@ -269,3 +269,23 @@ export function applyQbDowngrade(game: NflGameIn, team: string, level: QbLevel):
     change: { team, name: "passing game", kind: "trimmed", note: `${level} quarterback: passing and receiving yards x${k.yards}, touchdowns x${k.tds}` },
   };
 }
+
+export type Availability = { team: string; name: string; feed: Status; game: Status | null; book: boolean; verdict: "out" | "playing" | "check" };
+
+/**
+ * Cross-checks every player the injury feed calls out or doubtful against the game's own injury list and
+ * the book. "out" needs the game list to agree, or the book to have nothing on him; a player the book still
+ * posts props for, with no game-list tag, is "playing" (the feed is stale); anything else is "check".
+ */
+export function crossCheckOut(feed: InjuryRow[], gameList: InjuryRow[], bookNames: Set<string>): Availability[] {
+  const game = new Map(gameList.map((i) => [normName(i.name), i.status]));
+  const book = new Set([...bookNames].map(normName));
+  return feed
+    .filter((i) => i.status === "out" || i.status === "doubtful")
+    .map((i) => {
+      const g = game.get(normName(i.name)) ?? null;
+      const b = book.has(normName(i.name));
+      const verdict = g === "out" || g === "doubtful" ? "out" : b && g === null ? "playing" : !b && g === null ? "out" : "check";
+      return { team: i.team, name: i.name, feed: i.status, game: g, book: b, verdict };
+    });
+}
