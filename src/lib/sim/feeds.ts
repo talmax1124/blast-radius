@@ -174,3 +174,41 @@ export async function bookPlayers(league: League, eventId: string): Promise<Set<
   }));
   return new Set(names.filter((n): n is string => !!n));
 }
+
+const BOOK_STAT: Record<string, string> = {
+  "Total Points": "pts", "Total Rebounds": "reb", "Total Assists": "ast", "Total 3-Point Field Goals": "threes", "Total Points, Rebounds, and Assists": "pra",
+  "Total Passing Yards (incl. overtime)": "passYd", "Total Rushing Yards (incl. overtime)": "rushYd", "Total Receiving Yards (incl. overtime)": "recYd", "Total Receptions (incl. overtime)": "rec",
+};
+
+/**
+ * DraftKings' main player lines for one event from ESPN's odds feed, with over and under prices when the
+ * feed carries them (NBA does; NFL often posts the line alone). Feeds `anchorNba` / `anchorNfl` and the
+ * market side of `finalChance`.
+ */
+export async function bookLines(league: League, eventId: string): Promise<{ name: string; stat: string; line: number; over: number | null; under: number | null }[]> {
+  const base = `${CORE}/${PATH[league].replace("/", "/leagues/")}`;
+  const raw = new Map<string, { id: string; stat: string; line: number; prices: number[] }>();
+  for (let page = 1; ; page++) {
+    const d = await json(`${base}/events/${eventId}/competitions/${eventId}/odds/100/propBets?limit=500&page=${page}`);
+    for (const it of d.items ?? []) {
+      const stat = BOOK_STAT[it.type?.name ?? ""];
+      const m = /athletes\/(\d+)/.exec(it.athlete?.$ref ?? "");
+      const line = it.current?.target?.value;
+      if (!stat || !m || line == null) continue;
+      const k = `${m[1]}|${stat}|${line}`;
+      if (!raw.has(k)) raw.set(k, { id: m[1], stat, line, prices: [] });
+      const p = Number(String(it.odds?.american?.value ?? "").replace("EVEN", "100"));
+      if (Number.isFinite(p) && p !== 0) raw.get(k)!.prices.push(p);
+    }
+    if (page >= (d.pageCount ?? 1)) break;
+  }
+  const season = new Date().getUTCMonth() >= 7 ? new Date().getUTCFullYear() + (league === "nba" ? 1 : 0) : new Date().getUTCFullYear();
+  const names = new Map<string, string>();
+  await Promise.all([...new Set([...raw.values()].map((r) => r.id))].map(async (id) => {
+    try { names.set(id, (await json(`${base}/seasons/${season}/athletes/${id}`)).displayName); } catch { /* unnamed players are skipped */ }
+  }));
+  return [...raw.values()].filter((r) => names.has(r.id)).map((r) => ({
+    name: names.get(r.id)!, stat: r.stat, line: r.line,
+    over: r.prices.length === 2 ? r.prices[0] : null, under: r.prices.length === 2 ? r.prices[1] : null,
+  }));
+}

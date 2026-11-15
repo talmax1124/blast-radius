@@ -1,6 +1,7 @@
 import { describe, it, test } from "node:test";
 import assert from "node:assert/strict";
 import { checkNbaRoster, checkNflRoster, crossCheckOut, needsReview, normName, parseStatus, type DepthRow } from "./roster.ts";
+import { anchorNba, anchorNfl, finalChance } from "./anchor.ts";
 import { applyNflWeather, nflWeatherEffect } from "./weather.ts";
 import { blendMarket } from "../board/grade.ts";
 import { score, scorecard } from "./score.ts";
@@ -156,4 +157,20 @@ test("crossCheckOut keeps a player the book still posts and the game list does n
   assert.equal(r.find((x) => x.name === "Cam Skattebo")?.verdict, "playing");
   assert.equal(r.find((x) => x.name === "Carnell Tate")?.verdict, "out");
   assert.equal(r.find((x) => x.name === "Terry McLaurin")?.verdict, "out");
+});
+
+test("anchorNba pulls a projection toward the book line and keeps minutes in step", () => {
+  const game = { home: "A", away: "B", spread: 0, total: 220, players: [{ name: "X Y", team: "A", minutes: 30, pts: 30, reb: 5, ast: 4, threes: 2 }] };
+  const { game: g, moves } = anchorNba(game, [{ name: "X Y", stat: "pts", line: 20 }], 0.2);
+  assert.equal(g.players[0].pts, 22);
+  assert.ok(g.players[0].minutes < 30);
+  assert.equal(moves.length, 1);
+  assert.equal(finalChance(0.7, 0.5), 0.3 * 0.7 + 0.7 * 0.5);
+});
+
+test("anchorNfl moves targets with receptions", () => {
+  const game = { home: "A", away: "B", spread: 0, total: 44, players: [{ name: "R W", team: "A", pos: "WR", targets: 8, rec: 6, recYd: 70 }] };
+  const { game: g } = anchorNfl(game, [{ name: "R W", stat: "rec", line: 4.5 }], 0.2);
+  assert.ok(Math.abs((g.players[0].rec ?? 0) - 4.8) < 1e-9);
+  assert.ok(Math.abs((g.players[0].targets ?? 0) - 6.4) < 1e-9);
 });
