@@ -98,3 +98,49 @@ export const MODEL_SHARE = 0.3;
 export function finalChance(sim: number, market: number | null, share = MODEL_SHARE): number {
   return market == null ? sim : share * sim + (1 - share) * market;
 }
+
+/**
+ * Books set a main line near the median of the stat, not its mean, and counting stats are right-skewed, so
+ * a sim whose mean equals the line still leans under. This moves each lined stat until the sim's own
+ * P(over the line) is 50%, a few rounds of the fast engine, so "anchored" means centered on the line.
+ * `run(game, legs)` returns P(over) for each leg; it is passed in so this file does not import the engines.
+ */
+export function centerOnLines<G extends { players: any[] }>(
+  game: G, lines: BookLine[], run: (game: G, legs: { player: string; stat: string; line: number }[]) => number[], rounds = 3, strength = 1,
+): G {
+  const map: Record<string, string> = { pts: "pts", reb: "reb", ast: "ast", threes: "threes", rec: "rec", recYd: "recYd", rushYd: "rushYd", passYd: "passYd" };
+  const names = new Set(game.players.map((p) => normName(p.name)));
+  const ls = lines.filter((l) => map[l.stat] && names.has(normName(l.name)));
+  let g: G = { ...game, players: game.players.map((p) => ({ ...p })) };
+  for (let r = 0; r < rounds && ls.length; r++) {
+    const pOver = run(g, ls.map((l) => ({ player: l.name, stat: l.stat, line: l.line })));
+    ls.forEach((l, k) => {
+      const p = g.players.find((x) => normName(x.name) === normName(l.name));
+      const v = p?.[map[l.stat]];
+      if (!p || !(v > 0)) return;
+      // Nudge the mean up when the sim leans under and down when it leans over; 0.8 damps overshoot.
+      const f = Math.min(1.6, Math.max(0.6, 1 + strength * 0.8 * (0.5 - pOver[k]) * (l.stat === "threes" || l.stat === "rec" ? 0.9 : 0.5)));
+      p[map[l.stat]] = v * f;
+      if (l.stat === "rec" && p.targets > 0) p.targets *= f;
+      if (l.stat === "rushYd" && p.rushAtt > 0) p.rushAtt *= f;
+    });
+  }
+  return g;
+}
+
+/**
+ * Removes a slate's shared tilt: the average gap between sim and market on each game's over legs is taken
+ * off every leg in that game (added back on unders). What is left is the player-by-player difference.
+ */
+export function debiasSlate<T extends { game: string; side: "over" | "under"; sim: number; market: number }>(rows: T[]): (T & { centered: number })[] {
+  const off = new Map<string, number>();
+  for (const g of new Set(rows.map((r) => r.game))) {
+    const o = rows.filter((r) => r.game === g && r.side === "over");
+    off.set(g, o.length ? o.reduce((a, r) => a + r.sim - r.market, 0) / o.length : 0);
+  }
+  return rows.map((r) => {
+    const d = off.get(r.game) ?? 0;
+    const c = r.side === "over" ? r.sim - d : r.sim + d;
+    return { ...r, centered: Math.min(0.97, Math.max(0.03, c)) };
+  });
+}

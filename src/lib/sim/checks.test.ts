@@ -1,7 +1,7 @@
 import { describe, it, test } from "node:test";
 import assert from "node:assert/strict";
 import { checkNbaRoster, checkNflRoster, crossCheckOut, needsReview, normName, parseStatus, type DepthRow } from "./roster.ts";
-import { anchorNba, anchorNfl, finalChance } from "./anchor.ts";
+import { anchorNba, anchorNfl, debiasSlate, finalChance } from "./anchor.ts";
 import { applyNflWeather, nflWeatherEffect } from "./weather.ts";
 import { blendMarket } from "../board/grade.ts";
 import { score, scorecard } from "./score.ts";
@@ -173,4 +173,16 @@ test("anchorNfl moves targets with receptions", () => {
   const { game: g } = anchorNfl(game, [{ name: "R W", stat: "rec", line: 4.5 }], 0.2);
   assert.ok(Math.abs((g.players[0].rec ?? 0) - 4.8) < 1e-9);
   assert.ok(Math.abs((g.players[0].targets ?? 0) - 6.4) < 1e-9);
+});
+
+test("debiasSlate removes a game's shared tilt from overs and unders", () => {
+  const rows = [
+    { game: "G", side: "over" as const, sim: 0.4, market: 0.5 },
+    { game: "G", side: "over" as const, sim: 0.5, market: 0.5 },
+    { game: "G", side: "under" as const, sim: 0.6, market: 0.5 },
+  ];
+  const out = debiasSlate(rows);
+  assert.ok(Math.abs(out[0].centered - 0.45) < 1e-9);
+  assert.ok(Math.abs(out[1].centered - 0.55) < 1e-9);
+  assert.ok(Math.abs(out[2].centered - 0.55) < 1e-9);
 });
