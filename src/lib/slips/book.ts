@@ -25,6 +25,20 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    // Nov 14. Market-anchored picks: the side DraftKings favored, kept only when both engines agreed. Randle had no threes prop and was swapped out.
+    date: "2026-11-14",
+    title: "NBA 6-leg: four threes unders + Wolf rebounds + Murray PRA",
+    result: "miss",
+    legs: [
+      { name: "Kyrie Irving", market: "threes", side: "under", line: 3.5, actual: 7, result: "miss", model: { sport: "nba", key: "threes-under", p: 0.620 }, price: -155, opposite: 118 },
+      { name: "Nikola Jokic", market: "threes", side: "under", line: 1.5, actual: 1, result: "hit", model: { sport: "nba", key: "threes-under", p: 0.604 }, price: -157, opposite: 119 },
+      { name: "Andrew Wiggins", market: "threes", side: "under", line: 1.5, actual: 0, result: "hit", model: { sport: "nba", key: "threes-under", p: 0.567 }, price: -149, opposite: 113 },
+      { name: "Jaden McDaniels", market: "threes", side: "under", line: 1.5, actual: 2, result: "miss", model: { sport: "nba", key: "threes-under", p: 0.581 }, price: -134, opposite: 102 },
+      { name: "Danny Wolf", market: "rebounds", side: "over", line: 4.5, actual: 6, result: "hit", model: { sport: "nba", key: "reb", p: 0.608 }, price: -150, opposite: 114 },
+      { name: "Jamal Murray", market: "pts+reb+ast", side: "over", line: 34.5, actual: 39, result: "hit", model: { sport: "nba", key: "pra", p: 0.587 }, price: -124, opposite: -106 },
+    ],
+  },
+  {
     // Placed on Hard Rock. Curry, Butler, Porzingis and Moody were out; Spurs won 123-85.
     date: "2026-11-13",
     title: "Placed: GS@SA 4-leg SGP + Claxton over 2.5 assists + Wagler over 1.5 threes",
