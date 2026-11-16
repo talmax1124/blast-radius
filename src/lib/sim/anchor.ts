@@ -119,9 +119,10 @@ export function centerOnLines<G extends { players: any[] }>(
     sog: "sog", goals: "goals", assists: "assists", saves: "saves", blocks: "blocks", points: "points",
   };
   const names = new Set(game.players.map((p) => normName(p.name)));
-  // A points line moves goals and assists only for a player with no goals or assists line of his own.
+  // A points line moves what its player has no line of his own for: goals and assists together, or just goals
+  // beside an assists line (DraftKings posts both for nearly every skater), or just assists beside a goals line.
   const has = (name: string, stat: string) => lines.some((x) => x.stat === stat && normName(x.name) === normName(name));
-  const ls = lines.filter((l) => map[l.stat] && names.has(normName(l.name)) && !(l.stat === "points" && (has(l.name, "goals") || has(l.name, "assists"))));
+  const ls = lines.filter((l) => map[l.stat] && names.has(normName(l.name)) && !(l.stat === "points" && has(l.name, "goals") && has(l.name, "assists")));
   let g: G = { ...game, players: game.players.map((p) => ({ ...p })) };
   for (let r = 0; r < rounds && ls.length; r++) {
     const pOver = run(g, ls.map((l) => ({ player: l.name, stat: l.stat, line: l.line })));
@@ -133,6 +134,15 @@ export function centerOnLines<G extends { players: any[] }>(
       if (!p || !(v > 0)) return;
       // Nudge the mean up when the sim leans under and down when it leans over; 0.8 damps overshoot.
       const f = Math.min(1.6, Math.max(0.6, 1 + strength * 0.8 * ((l.target ?? 0.5) - pOver[k]) * centerGain(l.stat)));
+      if (points && (has(l.name, "goals") || has(l.name, "assists"))) {
+        // Move the points mean by the same factor through the part that has no line: v·(f − 1) more of it.
+        const part = has(l.name, "assists") ? "goals" : "assists";
+        const before = p[part] ?? 0;
+        p[part] = Math.max(0.005, before + v * (f - 1));
+        if (p.points > 0) p.points = (p.goals ?? 0) + (p.assists ?? 0);
+        if (part === "goals" && p.sog > 0 && !has(l.name, "sog")) p.sog += p.goals - before;
+        return;
+      }
       if (points) {
         p.goals *= f;
         p.assists *= f;

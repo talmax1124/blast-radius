@@ -222,6 +222,25 @@ describe("nhl game", () => {
     // The points line has no goals or assists line beside it, so both moved by the same factor.
     near(star.goals / 0.45, star.assists / 0.6, 1e-9, "goals and assists move together");
   });
+
+  it("centers a points line that sits beside an assists line by moving goals (DraftKings posts both)", () => {
+    const run = (g: NhlGameIn, legs: { player: string; stat: string; line: number }[]) =>
+      simulateTicket(
+        [{ sport: "nhl", game: g }],
+        legs.map((l) => ({ kind: "player", game: 0, player: l.player, stat: l.stat as "points", side: "over", line: l.line })),
+        { sims: 30_000, seed: 12 },
+      ).legs.map((l) => l.sim);
+    const lines = [
+      { name: "COL FB", stat: "assists", line: 0.5, target: 0.33 },
+      { name: "COL FB", stat: "points", line: 0.5, target: 0.6 },
+    ];
+    const centered = centerOnLines(even, lines, run, 5);
+    const after = run(centered, lines.map((l) => ({ player: l.name, stat: l.stat, line: l.line })));
+    near(after[0], 0.33, 0.03, "assists");
+    near(after[1], 0.6, 0.03, "points, which the assists line used to switch off");
+    const p = centered.players.find((x) => x.name === "COL FB")!;
+    assert.ok(p.goals > 0.38, `goals moved up: ${p.goals}`);
+  });
 });
 
 describe("nhl in the rest of the sim", () => {
