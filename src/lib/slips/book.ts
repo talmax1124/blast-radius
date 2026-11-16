@@ -25,6 +25,60 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    // Picked with the old model, before anchoring and centering. Spears broke a 14-yard run in the 1st half.
+    date: "2026-11-15",
+    title: "Placed (+5880): JAX@TEN SGP + 4 receptions unders",
+    result: "miss",
+    legs: [
+      { name: "Wan'Dale Robinson", market: "receptions", side: "over", line: 4.5, actual: 3, result: "miss", model: { sport: "nfl", key: "rec", p: 0.677 } },
+      { name: "Bhayshul Tuten", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit", model: { sport: "nfl", key: "atd", p: 0.57 } },
+      { name: "Tyjae Spears", market: "rushing yards", side: "under", line: 12.5, actual: 28, result: "miss", model: { sport: "nfl", key: "rush-under", p: 0.768 } },
+      { name: "Brock Bowers", market: "receptions", side: "under", line: 5.5, actual: 2, result: "hit", model: { sport: "nfl", key: "rec-under", p: 0.652 } },
+      { name: "Caleb Douglas", market: "receptions", side: "under", line: 3.5, actual: 3, result: "hit", model: { sport: "nfl", key: "rec-under", p: 0.671 } },
+      { name: "Darnell Washington", market: "receptions", side: "under", line: 2.5, actual: 1, result: "hit", model: { sport: "nfl", key: "rec-under", p: 0.672 } },
+      { name: "DJ Moore", market: "receptions", side: "under", line: 3.5, actual: 4, result: "miss", model: { sport: "nfl", key: "rec-under", p: 0.647 } },
+    ],
+  },
+  {
+    // Second-half legs from the fast engine with lines anchored to DraftKings.
+    date: "2026-11-15",
+    title: "JAX@TEN 2H confident 5",
+    result: "miss",
+    legs: [
+      { name: "Jaguars at Titans", market: "2H total points", side: "over", line: 9.5, actual: 37, result: "hit", model: { sport: "nfl", key: "total-2h", p: 0.931 } },
+      { name: "Wan'Dale Robinson", market: "2H receptions", side: "over", line: 0.5, actual: 0, result: "miss", model: { sport: "nfl", key: "rec-2h", p: 0.896 } },
+      { name: "Brenton Strange", market: "2H receptions", side: "over", line: 0.5, actual: 1, result: "hit", model: { sport: "nfl", key: "rec-2h", p: 0.809 } },
+      { name: "Jakobi Meyers", market: "2H receptions", side: "over", line: 0.5, actual: 1, result: "hit", model: { sport: "nfl", key: "rec-2h", p: 0.8 } },
+      { name: "Trevor Lawrence", market: "2H passing yards", side: "over", line: 79.5, actual: 118, result: "hit", model: { sport: "nfl", key: "passyd-2h", p: 0.695 } },
+    ],
+  },
+  {
+    date: "2026-11-15",
+    title: "NFL + NBA 6-man, first version (under-biased; told not to place)",
+    result: "miss",
+    legs: [
+      { name: "George Kittle", market: "receptions", side: "under", line: 5.5, actual: 6, result: "miss", model: { sport: "nfl", key: "rec-under", p: 0.564 } },
+      { name: "Drew Lock", market: "passing yards", side: "under", line: 203.5, actual: 240, result: "miss", model: { sport: "nfl", key: "passyd-under", p: 0.561 } },
+      { name: "Dylan Harper", market: "pts+reb+ast", side: "under", line: 29.5, actual: 44, result: "miss", model: { sport: "nba", key: "pra-under", p: 0.564 }, price: -119 },
+      { name: "Myles Turner", market: "pts+reb+ast", side: "under", line: 18.5, actual: 16, result: "hit", model: { sport: "nba", key: "pra-under", p: 0.55 }, price: -120 },
+      { name: "Anthony Davis", market: "threes", side: "under", line: 0.5, actual: 0, result: "hit", model: { sport: "nba", key: "threes-under", p: 0.518 }, price: -105 },
+      { name: "Jayson Tatum", market: "threes", side: "under", line: 2.5, actual: 5, result: "miss", model: { sport: "nba", key: "threes-under", p: 0.494 }, price: 107 },
+    ],
+  },
+  {
+    date: "2026-11-15",
+    title: "NFL + NBA 6-man, debiased version",
+    result: "miss",
+    legs: [
+      { name: "George Kittle", market: "receptions", side: "under", line: 5.5, actual: 6, result: "miss" },
+      { name: "DK Metcalf", market: "receptions", side: "under", line: 4.5, actual: 2, result: "hit", model: { sport: "nfl", key: "rec-under", p: 0.55 } },
+      { name: "Reed Sheppard", market: "assists", side: "under", line: 3.5, actual: 6, result: "miss", model: { sport: "nba", key: "ast-under", p: 0.503 }, price: 105 },
+      { name: "Jabari Smith Jr.", market: "threes", side: "over", line: 2.5, actual: 1, result: "miss", model: { sport: "nba", key: "threes", p: 0.432 }, price: 137 },
+      { name: "Tyler Herro", market: "assists", side: "under", line: 4.5, actual: 3, result: "hit", model: { sport: "nba", key: "ast-under", p: 0.475 }, price: 114 },
+      { name: "Zaccharie Risacher", market: "rebounds", side: "over", line: 3.5, actual: 5, result: "hit", model: { sport: "nba", key: "reb", p: 0.479 }, price: 112 },
+    ],
+  },
+  {
     // Nov 14. Market-anchored picks: the side DraftKings favored, kept only when both engines agreed. Randle had no threes prop and was swapped out.
     date: "2026-11-14",
     title: "NBA 6-leg: four threes unders + Wolf rebounds + Murray PRA",
