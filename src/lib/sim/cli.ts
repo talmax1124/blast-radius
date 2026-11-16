@@ -6,7 +6,7 @@
  * ticket.json holds { games, legs, sims?, seed?, offered? }. A game is either a full SimGame
  * ({ sport, game: { home, away, spread, total, players } }) or a board reference
  * ({ sport, board: "path/to/board.json", home, away, spread, total }) that pulls the players
- * from a saved NBA or NFL engine board.
+ * from a saved NBA, NFL or NHL (ICE) engine board.
  *
  * Add --live to check each game against the real world first: ESPN depth charts and injury reports
  * (players ruled out are dropped, missing starters added) and the kickoff forecast at the stadium
@@ -17,7 +17,7 @@
  * knows which engine has it right.
  */
 import { readFileSync } from "node:fs";
-import { nbaGame, nflGame } from "./adapters.ts";
+import { nbaGame, nflGame, nhlGame, nhlLine } from "./adapters.ts";
 import { simulateTicket, type Leg, type SimGame } from "./ticket.ts";
 import { applyQbDowngrade, checkNbaRoster, checkNflRoster, needsReview, qbLevel, type RosterChange } from "./roster.ts";
 import { espnInjuries, kickoff, nflDepth, nflPassShare, nflWeather } from "./feeds.ts";
@@ -36,6 +36,7 @@ async function live(g: SimGame, date: string): Promise<{ game: SimGame; changes:
       return empty;
     }
   };
+  if (g.sport === "nhl") return { game: g, changes: [], notes: ["no NHL roster, injury or goalie checks yet: confirm the starting goalie (first G listed per team)"] };
   const injuries = await soft("injuries", () => espnInjuries(g.sport, [home, away]), []);
   if (g.sport === "nba") {
     const r = checkNbaRoster(g.game, injuries);
@@ -64,13 +65,21 @@ async function live(g: SimGame, date: string): Promise<{ game: SimGame; changes:
   return { game: { sport: "nfl", game: applyNflWeather(r.game, effect) }, changes: r.changes, notes };
 }
 
-type GameRef = SimGame | { sport: "nba" | "nfl"; board: string; home: string; away: string; spread: number; total: number };
+/** An NHL board reference may leave out spread and total: they are read off the board game's moneylines and total. */
+type GameRef = SimGame | { sport: "nba" | "nfl" | "nhl"; board: string; home: string; away: string; spread: number; total: number };
 
 function resolve(ref: GameRef): SimGame {
   if ("game" in ref) return ref;
   const raw = JSON.parse(readFileSync(ref.board, "utf8"));
   const line = { home: ref.home, away: ref.away, spread: ref.spread, total: ref.total };
   if (ref.sport === "nba") return { sport: "nba", game: nbaGame((raw.nba ?? raw).players, line) };
+  if (ref.sport === "nhl") {
+    const board = raw.nhl ?? raw;
+    const bg = (board.games ?? []).find((g: { home: string; away: string }) => g.home === ref.home && g.away === ref.away);
+    const fromBoard = bg ? nhlLine(bg) : null;
+    const nl = { ...line, spread: ref.spread ?? fromBoard?.spread ?? 0, total: ref.total ?? fromBoard?.total ?? 6.1, goalies: fromBoard?.goalies };
+    return { sport: "nhl", game: nhlGame(board.skaters, nl) };
+  }
   const board = raw.nfl ?? raw;
   return { sport: "nfl", game: nflGame([...board.props, ...board.goalLine], line) };
 }
@@ -118,6 +127,7 @@ async function main(path: string, checkLive: boolean, checkConsensus: boolean): 
     console.log(`\nconsensus (fast vs play-by-play, flag at ${(CONSENSUS_GAP * 100).toFixed(0)} points):`);
     console.log("leg".padEnd(46), "fast".padStart(7), "pbp".padStart(7), "mean".padStart(7), "");
     for (const l of c.legs) console.log(l.label.padEnd(46), pct(l.fast).padStart(7), pct(l.pbp).padStart(7), pct(l.mean).padStart(7), l.agree ? "  ok" : "  DROP: engines disagree");
+    for (const n of c.notes) console.log(`note: ${n}`);
     console.log(`all legs hit: fast ${pct(c.joint.fast)} · play-by-play ${pct(c.joint.pbp)} · mean ${pct(c.joint.mean)}`);
     if (c.drop.length) console.log(`drop ${c.drop.length} leg(s) before betting: ${c.drop.map((i) => c.legs[i].label).join("; ")}`);
     else console.log("both engines agree on every leg");

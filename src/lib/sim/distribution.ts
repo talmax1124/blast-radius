@@ -1,6 +1,7 @@
 import { makeRng } from "./rng.ts";
 import { newNbaState, playNba, type NbaStat } from "./nba.ts";
 import { newNflState, playNfl, type NflStat } from "./nfl.ts";
+import { NHL_STATS, newNhlState, playNhl, refreshNhl, type NhlStat } from "./nhl.ts";
 import type { SimGame } from "./ticket.ts";
 
 /**
@@ -68,6 +69,8 @@ const NFL_RANGE: Record<NflStat | "td" | "rushRecYd", [number, number]> = {
   passYd: [0, 650], passTd: [0, 8], rushAtt: [0, 45], rushYd: [-15, 300], rushTd: [0, 5], targets: [0, 25], rec: [0, 20], recYd: [0, 300], recTd: [0, 5], td: [0, 5], rushRecYd: [-15, 400],
 };
 
+const NHL_RANGE: Record<NhlStat, [number, number]> = { goals: [0, 6], assists: [0, 7], points: [0, 9], sog: [0, 20], saves: [0, 70], blocks: [0, 15] };
+
 export type PlayerSpread = { name: string; team: string; stats: Record<string, Spread> };
 export type GameSpread = { sims: number; home: Spread; away: Spread; total: Spread; homeMargin: Spread; homeWin: number; players: PlayerSpread[] };
 
@@ -94,6 +97,18 @@ export function simulateGame(sg: SimGame, opts: { sims?: number; seed?: number; 
         h.min.add(st.stat.min[i]);
         h.pra.add(st.stat.pts[i] + st.stat.reb[i] + st.stat.ast[i]);
       }
+    }
+    return finish(hists);
+  }
+  if (sg.sport === "nhl") {
+    const hists = sg.game.players.map(() => Object.fromEntries(NHL_STATS.map((k) => [k, new Hist(...NHL_RANGE[k])])) as Record<string, Hist>);
+    const st = newNhlState(sg.game);
+    refreshNhl(sg.game);
+    for (let k = 0; k < sims; k++) {
+      if (opts.onProgress && k % 20_000 === 0) opts.onProgress(k);
+      playNhl(sg.game, rng, st);
+      tally(st.homePts, st.awayPts);
+      for (let i = 0; i < sg.game.players.length; i++) for (const key of NHL_STATS) hists[i][key].add(st.stat[key][i]);
     }
     return finish(hists);
   }

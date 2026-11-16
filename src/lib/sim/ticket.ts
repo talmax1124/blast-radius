@@ -5,6 +5,7 @@ import { playNbaPbp } from "./nba-pbp.ts";
 import { playNflPbp } from "./nfl-pbp.ts";
 import { newNbaState, playNba, type NbaGameIn, type NbaGameState, type NbaStat } from "./nba.ts";
 import { newNflState, playNfl, type NflGameIn, type NflGameState, type NflStat } from "./nfl.ts";
+import { newNhlState, playNhl, refreshNhl, type NhlGameIn, type NhlGameState, type NhlStat } from "./nhl.ts";
 
 /**
  * Price a ticket by playing its games forward. Every leg is read off the same simulated game,
@@ -12,13 +13,15 @@ import { newNflState, playNfl, type NflGameIn, type NflGameState, type NflStat }
  * rather than assumed away by multiplying the legs.
  */
 
-export type SimGame = { sport: "nba"; game: NbaGameIn } | { sport: "nfl"; game: NflGameIn };
+export type SimGame = { sport: "nba"; game: NbaGameIn } | { sport: "nfl"; game: NflGameIn } | { sport: "nhl"; game: NhlGameIn };
 
 export type NbaCombo = NbaStat | "pra" | "pr" | "pa" | "ra";
 export type NflCombo = NflStat | "td" | "rushRecYd";
+/** NHL player legs: goals, assists, points, sog (shots on goal), saves (starting goalie), blocks. */
+export type NhlCombo = NhlStat;
 
 export type Leg =
-  | { kind: "player"; game: number; player: string; stat: NbaCombo | NflCombo; side: "over" | "under"; line: number; price?: number; opposite?: number }
+  | { kind: "player"; game: number; player: string; stat: NbaCombo | NflCombo | NhlCombo; side: "over" | "under"; line: number; price?: number; opposite?: number }
   | { kind: "moneyline"; game: number; team: string; price?: number; opposite?: number }
   | { kind: "spread"; game: number; team: string; line: number; price?: number; opposite?: number }
   | { kind: "total"; game: number; side: "over" | "under"; line: number; price?: number; opposite?: number }
@@ -61,7 +64,10 @@ export type TicketReport = {
   samples: SampleGame[];
 };
 
-type State = { sport: "nba"; s: NbaGameState; g: NbaGameIn } | { sport: "nfl"; s: NflGameState; g: NflGameIn };
+type State =
+  | { sport: "nba"; s: NbaGameState; g: NbaGameIn }
+  | { sport: "nfl"; s: NflGameState; g: NflGameIn }
+  | { sport: "nhl"; s: NhlGameState; g: NhlGameIn; want: Uint8Array };
 
 function playerIndex(g: { players: { name: string }[] }, name: string): number {
   const i = g.players.findIndex((p) => p.name.toLowerCase() === name.toLowerCase());
@@ -87,6 +93,11 @@ function value(st: State, leg: Leg, idx: number): number {
       return us - them;
     }
     case "player": {
+      if (st.sport === "nhl") {
+        const t = st.s.stat[leg.stat as NhlStat];
+        if (!t) throw new Error(`${leg.stat} is not an NHL stat (goals, assists, points, sog, saves, blocks)`);
+        return t[idx];
+      }
       if (st.sport === "nba") {
         const t = st.s.stat;
         switch (leg.stat as NbaCombo) {
@@ -161,9 +172,16 @@ export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: num
     const names = new Set(legs.filter((l) => l.game === gi && l.kind === "player").map((l) => (l as { player: string }).player.toLowerCase()));
     return { sport: "nba", game: { ...sg.game, players: sg.game.players.filter((p) => names.has(p.name.toLowerCase())) } };
   });
-  const states: State[] = games.map((sg) =>
-    sg.sport === "nba" ? { sport: "nba", s: newNbaState(sg.game), g: sg.game } : { sport: "nfl", s: newNflState(sg.game), g: sg.game },
-  );
+  // NHL goals are split across the whole roster, so every skater plays; only the legs' players draw shots and blocks.
+  // There is no NHL play-by-play engine yet: engine "pbp" plays NHL games on the fast engine.
+  const states: State[] = games.map((sg, gi): State => {
+    if (sg.sport === "nba") return { sport: "nba", s: newNbaState(sg.game), g: sg.game };
+    if (sg.sport === "nfl") return { sport: "nfl", s: newNflState(sg.game), g: sg.game };
+    refreshNhl(sg.game);
+    const want = new Uint8Array(sg.game.players.length);
+    for (const l of legs) if (l.game === gi && l.kind === "player") want[playerIndex(sg.game, l.player)] = 1;
+    return { sport: "nhl", s: newNhlState(sg.game), g: sg.game, want };
+  });
   const idx = legs.map((l) => (l.kind === "player" ? playerIndex(states[l.game].g, l.player) : -1));
   const n = legs.length;
   const hits = new Float64Array(n);
@@ -180,7 +198,8 @@ export function simulateTicket(input: SimGame[], legs: Leg[], opts: { sims?: num
     if (opts.onProgress && k % 50_000 === 0) opts.onProgress(k);
     for (const st of states) {
       if (st.sport === "nba") (pbp ? playNbaPbp : playNba)(st.g, rng, st.s);
-      else (pbp ? playNflPbp : playNfl)(st.g, rng, st.s);
+      else if (st.sport === "nfl") (pbp ? playNflPbp : playNfl)(st.g, rng, st.s);
+      else playNhl(st.g, rng, st.s, st.want);
     }
     let all = 0;
     for (let j = 0; j < n; j++) {

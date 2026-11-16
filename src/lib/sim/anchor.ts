@@ -14,7 +14,12 @@ import { normName } from "./roster.ts";
  * copies it.
  */
 
-export type BookLine = { name: string; stat: string; line: number };
+/**
+ * A posted line. `target` is the market's no-vig P(over), for lines a book does not hang at the median, such
+ * as NHL anytime goals or a point at 0.5 (often +150 or longer); centerOnLines moves the sim to it. Leave it
+ * out for main lines, which are treated as medians (50%).
+ */
+export type BookLine = { name: string; stat: string; line: number; target?: number };
 export type AnchorMove = { name: string; stat: string; from: number; to: number };
 
 const NBA_STATS = ["pts", "reb", "ast", "threes"] as const;
@@ -108,24 +113,64 @@ export function finalChance(sim: number, market: number | null, share = MODEL_SH
 export function centerOnLines<G extends { players: any[] }>(
   game: G, lines: BookLine[], run: (game: G, legs: { player: string; stat: string; line: number }[]) => number[], rounds = 3, strength = 1,
 ): G {
-  const map: Record<string, string> = { pts: "pts", reb: "reb", ast: "ast", threes: "threes", rec: "rec", recYd: "recYd", rushYd: "rushYd", passYd: "passYd" };
+  const map: Record<string, string> = {
+    pts: "pts", reb: "reb", ast: "ast", threes: "threes", rec: "rec", recYd: "recYd", rushYd: "rushYd", passYd: "passYd",
+    // NHL: `points` has no field of its own; it moves goals and assists together (below).
+    sog: "sog", goals: "goals", assists: "assists", saves: "saves", blocks: "blocks", points: "points",
+  };
   const names = new Set(game.players.map((p) => normName(p.name)));
-  const ls = lines.filter((l) => map[l.stat] && names.has(normName(l.name)));
+  // A points line moves goals and assists only for a player with no goals or assists line of his own.
+  const has = (name: string, stat: string) => lines.some((x) => x.stat === stat && normName(x.name) === normName(name));
+  const ls = lines.filter((l) => map[l.stat] && names.has(normName(l.name)) && !(l.stat === "points" && (has(l.name, "goals") || has(l.name, "assists"))));
   let g: G = { ...game, players: game.players.map((p) => ({ ...p })) };
   for (let r = 0; r < rounds && ls.length; r++) {
     const pOver = run(g, ls.map((l) => ({ player: l.name, stat: l.stat, line: l.line })));
     ls.forEach((l, k) => {
       const p = g.players.find((x) => normName(x.name) === normName(l.name));
-      const v = p?.[map[l.stat]];
+      const points = l.stat === "points";
+      if (p && l.stat === "saves" && !(p.saves > 0) && l.line > 0) p.saves = l.line; // a goalie with no saves projection starts at the line
+      const v = points ? (p?.goals ?? 0) + (p?.assists ?? 0) : p?.[map[l.stat]];
       if (!p || !(v > 0)) return;
       // Nudge the mean up when the sim leans under and down when it leans over; 0.8 damps overshoot.
-      const f = Math.min(1.6, Math.max(0.6, 1 + strength * 0.8 * (0.5 - pOver[k]) * (l.stat === "threes" || l.stat === "rec" ? 0.9 : 0.5)));
+      const f = Math.min(1.6, Math.max(0.6, 1 + strength * 0.8 * ((l.target ?? 0.5) - pOver[k]) * centerGain(l.stat)));
+      if (points) {
+        p.goals *= f;
+        p.assists *= f;
+        if (p.points > 0) p.points *= f;
+        return;
+      }
       p[map[l.stat]] = v * f;
       if (l.stat === "rec" && p.targets > 0) p.targets *= f;
       if (l.stat === "rushYd" && p.rushAtt > 0) p.rushAtt *= f;
+      // A goal is a shot on goal: more goals keep the shots line where it was by lifting expected shots with them.
+      if (l.stat === "goals" && p.sog > 0 && !has(l.name, "sog")) p.sog += v * (f - 1);
     });
   }
   return g;
+}
+
+/**
+ * How hard one round pushes a stat's mean per point of P(over) it is off. Roughly 1 / (dP/dlog mean) at the line:
+ * a big count like points moves P(over) quickly; a 0.5 goals line or an NHL shots line barely moves, so it needs more.
+ */
+function centerGain(stat: string): number {
+  switch (stat) {
+    case "threes":
+    case "rec":
+      return 0.9;
+    case "goals":
+      return 3;
+    case "assists":
+    case "points":
+      return 2.5;
+    case "sog":
+    case "blocks":
+      return 1.6;
+    case "saves":
+      return 0.7;
+    default:
+      return 0.5;
+  }
 }
 
 /**
