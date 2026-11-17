@@ -25,6 +25,32 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    date: "2026-11-16",
+    title: "NBA 4-leg overs (centered + debiased model)",
+    result: "miss",
+    legs: [
+      { name: "Bobby Portis", market: "rebounds", side: "over", line: 4.5, actual: 6, result: "hit", model: { sport: "nba", key: "reb", p: 0.483 }, price: 114 },
+      { name: "Donovan Mitchell", market: "assists", side: "over", line: 5.5, actual: 4, result: "miss", model: { sport: "nba", key: "ast", p: 0.484 }, price: 108 },
+      { name: "Jamal Murray", market: "rebounds", side: "over", line: 4.5, actual: 4, result: "miss", model: { sport: "nba", key: "reb", p: 0.464 }, price: 118 },
+      { name: "Cedric Coward", market: "rebounds", side: "over", line: 7.5, actual: 8, result: "hit", model: { sport: "nba", key: "reb", p: 0.473 }, price: 113 },
+    ],
+  },
+  {
+    // Picked from this season's game logs, not the sim (the NFL model does not beat the line). The first draft's Henry over 81.5 and Andrews under 2.5 were dropped after the double-check; both would have lost (10 yards; 8 catches).
+    date: "2026-11-16",
+    title: "MNF LAC@BAL slip (game-log leans, after the double-check)",
+    result: "miss",
+    legs: [
+      { name: "Zay Flowers", market: "receiving yards", side: "under", line: 75.5, actual: 74, result: "hit" },
+      { name: "Rashod Bateman", market: "receptions", side: "under", line: 2.5, actual: 3, result: "miss" },
+      { name: "Derrick Henry", market: "rushing yards", side: "under", line: 81.5, actual: 10, result: "hit" },
+      { name: "Omarion Hampton", market: "rushing yards", side: "over", line: 34.5, actual: 105, result: "hit" },
+      { name: "Omarion Hampton", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
+      { name: "Riley Patterson", market: "kicking points", side: "under", line: 7.5, actual: 8, result: "miss" },
+      { name: "Cameron Dicker", market: "kicking points", side: "over", line: 6.5, actual: 11, result: "hit" },
+    ],
+  },
+  {
     // Picked with the old model, before anchoring and centering. Spears broke a 14-yard run in the 1st half.
     date: "2026-11-15",
     title: "Placed (+5880): JAX@TEN SGP + 4 receptions unders",
