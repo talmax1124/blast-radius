@@ -25,6 +25,18 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    // Nov 18. Model (centered, debiased) and last-10 game logs both had to agree. Horford sat and his leg was dropped.
+    date: "2026-11-18",
+    title: "NBA 3-leg + 4-leg (Risacher, SGA, Brazile, DeRozan)",
+    result: "miss",
+    legs: [
+      { name: "Zaccharie Risacher", market: "rebounds", side: "over", line: 3.5, actual: 3, result: "miss", model: { sport: "nba", key: "reb", p: 0.458 }, price: 129 },
+      { name: "Shai Gilgeous-Alexander", market: "threes", side: "over", line: 2.5, actual: 1, result: "miss", model: { sport: "nba", key: "threes", p: 0.434 }, price: 136 },
+      { name: "Trevon Brazile", market: "points", side: "over", line: 4.5, actual: 0, result: "miss", model: { sport: "nba", key: "pts", p: 0.597 }, price: -137 },
+      { name: "DeMar DeRozan", market: "pts+reb+ast", side: "over", line: 12.5, actual: 22, result: "hit", model: { sport: "nba", key: "pra", p: 0.517 }, price: -105 },
+    ],
+  },
+  {
     date: "2026-11-16",
     title: "NBA 4-leg overs (centered + debiased model)",
     result: "miss",
