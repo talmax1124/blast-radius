@@ -25,6 +25,46 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    // Game-log leans, no model p.
+    date: "2026-11-22",
+    title: "JAX@NYG 5-man (game-log leans)",
+    result: "miss",
+    legs: [
+      { name: "Cam Skattebo", market: "rushing yards", side: "over", line: 57.5, actual: 34, result: "miss" },
+      { name: "Jakobi Meyers", market: "receptions", side: "under", line: 3.5, actual: 4, result: "miss" },
+      { name: "Bhayshul Tuten", market: "anytime touchdown", side: "over", line: 0.5, actual: 0, result: "miss" },
+      { name: "Dominic Zvada", market: "kicking points", side: "over", line: 5.5, actual: 11, result: "hit" },
+      { name: "Isaiah Likely", market: "receiving yards", side: "over", line: 46.5, actual: 35, result: "miss" },
+    ],
+  },
+  {
+    // Sides the book juiced to 59%+ that also hit 7+ of the last 10.
+    date: "2026-11-19",
+    title: "Chalkboard pick'em: 5 NBA + 1 NFL (book juice + last-10 logs)",
+    result: "miss",
+    legs: [
+      { name: "Mikal Bridges", market: "threes", side: "under", line: 1.5, actual: 2, result: "miss" },
+      { name: "Rui Hachimura", market: "assists", side: "under", line: 1.5, actual: 2, result: "miss" },
+      { name: "Cedric Coward", market: "threes", side: "over", line: 1.5, actual: 5, result: "hit" },
+      { name: "Jerami Grant", market: "rebounds", side: "under", line: 2.5, actual: 0, result: "hit" },
+      { name: "Derrick Jones Jr.", market: "assists", side: "under", line: 1.5, actual: 1, result: "hit" },
+      { name: "Jonathan Taylor", market: "rushing yards", side: "over", line: 52.5, actual: 21, result: "miss" },
+    ],
+  },
+  {
+    // Houston won 26-3 and ran the clock: the blowout risk flagged at the time.
+    date: "2026-11-19",
+    title: "TNF IND@HOU 5-man (game-log leans)",
+    result: "miss",
+    legs: [
+      { name: "Jonathan Taylor", market: "rushing yards", side: "over", line: 52.5, actual: 21, result: "miss" },
+      { name: "C.J. Stroud", market: "passing yards", side: "over", line: 253.5, actual: 194, result: "miss" },
+      { name: "Ka'imi Fairbairn", market: "kicking points", side: "over", line: 8.5, actual: 6, result: "miss" },
+      { name: "Spencer Shrader", market: "kicking points", side: "over", line: 6.5, actual: 3, result: "miss" },
+      { name: "Nico Collins", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
+    ],
+  },
+  {
     // Nov 18. Model (centered, debiased) and last-10 game logs both had to agree. Horford sat and his leg was dropped.
     date: "2026-11-18",
     title: "NBA 3-leg + 4-leg (Risacher, SGA, Brazile, DeRozan)",
