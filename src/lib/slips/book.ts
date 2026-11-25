@@ -25,6 +25,29 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    // Game logs + sims + wind; Burrow under 305.5 was swapped out and would have hit (300). Stevens kicked 5 field goals.
+    date: "2026-11-23",
+    title: "MNF CIN@WSH Chalkboard (final version)",
+    result: "miss",
+    legs: [
+      { name: "Antonio Williams", market: "receptions", side: "under", line: 3.5, actual: 9, result: "miss" },
+      { name: "Chig Okonkwo", market: "receptions", side: "under", line: 4.5, actual: 4, result: "hit" },
+      { name: "Drew Stevens", market: "kicking points", side: "under", line: 7.5, actual: 16, result: "miss" },
+      { name: "Stefon Diggs", market: "receiving yards", side: "under", line: 54.5, actual: 45, result: "hit" },
+    ],
+  },
+  {
+    // Washington won 22-20; Cincinnati scored two TDs (Higgins, Colbie Young).
+    date: "2026-11-23",
+    title: "MNF CIN@WSH anytime TDs (live at kickoff)",
+    result: "miss",
+    legs: [
+      { name: "Ja'Marr Chase", market: "anytime touchdown", side: "over", line: 0.5, actual: 0, result: "miss" },
+      { name: "Mike Gesicki", market: "anytime touchdown", side: "over", line: 0.5, actual: 0, result: "miss" },
+      { name: "Tee Higgins", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
+    ],
+  },
+  {
     // Game-log leans, no model p.
     date: "2026-11-22",
     title: "JAX@NYG 5-man (game-log leans)",
