@@ -25,6 +25,16 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    // Nov 24. The two sides DraftKings juiced hardest (about 60%) that also hit 8+ of the last 10. Tatum over 2.5 threes was the named alternate (hit, 6).
+    date: "2026-11-24",
+    title: "NBA 2 most-confident: Gordon under 2.5 assists + Dybantsa under 1.5 threes",
+    result: "miss",
+    legs: [
+      { name: "Aaron Gordon", market: "assists", side: "under", line: 2.5, actual: 3, result: "miss", price: -182, opposite: 137 },
+      { name: "AJ Dybantsa", market: "threes", side: "under", line: 1.5, actual: 2, result: "miss", price: -171, opposite: 129 },
+    ],
+  },
+  {
     // Game logs + sims + wind; Burrow under 305.5 was swapped out and would have hit (300). Stevens kicked 5 field goals.
     date: "2026-11-23",
     title: "MNF CIN@WSH Chalkboard (final version)",
