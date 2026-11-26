@@ -25,6 +25,19 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    // Nov 25. Heavy-juice sides (59-64% per DraftKings) that also hit 8+ of the last 10. Sabonis was the optional 5th leg.
+    date: "2026-11-25",
+    title: "SAC@GS 4-man (+ optional Sabonis)",
+    result: "miss",
+    legs: [
+      { name: "Brandin Podziemski", market: "assists", side: "under", line: 4.5, actual: 6, result: "miss", price: -167, opposite: 126 },
+      { name: "Emanuel Sharp", market: "threes", side: "under", line: 1.5, actual: 3, result: "miss", price: -216, opposite: 162 },
+      { name: "Will Richard", market: "threes", side: "over", line: 0.5, actual: 1, result: "hit", price: -201, opposite: 151 },
+      { name: "De'Andre Hunter", market: "assists", side: "over", line: 1.5, actual: 3, result: "hit", price: -177, opposite: 134 },
+      { name: "Domantas Sabonis", market: "assists", side: "under", line: 5.5, actual: 6, result: "miss", price: -160, opposite: 121 },
+    ],
+  },
+  {
     // Second pass dropped Smack under and Corum over 55.5; Corum ran for 184. Watson left injured in the 1st half.
     date: "2026-11-25",
     title: "GB@LAR 4-man (after the second pass)",
