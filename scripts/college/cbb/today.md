@@ -1,6 +1,6 @@
 # CBB picks — 2026-11-26 (Thanksgiving)
 
-Generated 2026-11-26 15:23 ET by `today.py`. Lines: DraftKings via ESPN (current number at generation time). Model: ratings fit on all D-I games through 2026-11-25; spreads use λ=2, prior regress=1; totals use λ=2, prior regress=0, calibrated (actual ≈ 40.8 + 0.722·model).
+Generated 2026-11-26 16:04 ET by `today.py`. Lines: DraftKings via ESPN (current number at generation time). Model: ratings fit on all D-I games through 2026-11-25; spreads use λ=2, prior regress=1; totals use λ=2, prior regress=0, calibrated (actual ≈ 40.8 + 0.722·model).
 
 ## Verdict from the backtest (see backtest.md)
 
@@ -13,7 +13,6 @@ Only totals qualify (spreads showed no edge). These are **low-confidence**: the 
 
 | tip (ET) | game | pick | market | model | edge | games played (away/home) |
 |---|---|---|---|---|---|---|
-| 03:30 PM | Tennessee vs Iowa State | **Under 138.5** | O/U 138.5 | 128.9 | -9.6 | 6/5 |
 | 05:00 PM | Saint Mary's vs UCLA | **Over 152.5** | O/U 152.5 | 162.0 | +9.5 | 7/6 |
 | 08:00 PM | Jax State vs UC Davis | **Over 137.5** | O/U 137.5 | 149.0 | +11.5 | 7/6 |
 | 09:00 PM | Alabama vs Kansas St | **Under 169.5** | O/U 169.5 | 160.2 | -9.3 | 6/6 |
@@ -24,14 +23,12 @@ Spread shown from the home team's perspective (negative = home favored). Edge = 
 
 | tip (ET) | game | site | DK spread | model spread | spread edge | DK total | model total | total edge |
 |---|---|---|---|---|---|---|---|---|
-| 03:30 PM | Tennessee vs Iowa State | neutral | ISU -5.5 | ISU -0.4 | -5.1 | 138.5 | 128.9 | -9.6 |
-| 03:30 PM | Miami vs Michigan | neutral | MICH +1.5 | MICH -1.3 | +2.8 | 161.5 | 157.3 | -4.2 |
 | 04:30 PM | Arkansas vs Michigan St | neutral | MSU -5.5 | MSU -5.5 | -0.0 | 148.5 | 149.1 | +0.6 |
 | 04:30 PM | Utah State vs USC | neutral | USC -1.5 | USC +4.6 | -6.1 | 156.5 | 160.6 | +4.1 |
 | 05:00 PM | Saint Mary's vs UCLA | neutral | UCLA -7.5 | UCLA -0.4 | -7.1 | 152.5 | 162.0 | +9.5 |
-| 06:00 PM | TCU vs Creighton | neutral | CREI -1.5 | CREI -2.3 | +0.8 | 153.5 | 156.1 | +2.6 |
+| 06:00 PM | TCU vs Creighton | neutral | CREI -1.5 | CREI -2.3 | +0.8 | 152.5 | 156.1 | +3.6 |
 | 07:00 PM | SMU vs LSU | neutral | LSU -7.5 | LSU -3.7 | -3.8 | 155.5 | 155.5 | -0.0 |
-| 07:00 PM | DePaul vs Pitt | neutral | PITT +1.5 | PITT -1.1 | +2.6 | 137.5 | 141.6 | +4.1 |
+| 07:00 PM | DePaul vs Pitt | neutral | PITT -1.5 | PITT -1.1 | -0.4 | 137.5 | 141.6 | +4.1 |
 | 08:00 PM | Jax State vs UC Davis | neutral | UCD +3.5 | UCD +4.0 | -0.5 | 137.5 | 149.0 | +11.5 |
 | 09:00 PM | Louisville vs St John's | neutral | SJU -1.5 | SJU -7.4 | +5.9 | 160.5 | 157.0 | -3.5 |
 | 09:00 PM | Alabama vs Kansas St | neutral | KSU +13.5 | KSU +12.0 | +1.5 | 169.5 | 160.2 | -9.3 |
@@ -44,10 +41,12 @@ Spread shown from the home team's perspective (negative = home favored). Edge = 
 - 11:00 AM ET Georgia vs Cincinnati (Final — 81-83)
 - 12:00 PM ET Army @ UTSA (Final — 79-61)
 - 12:00 PM ET Oklahoma vs Purdue (Final — 70-63)
-- 01:00 PM ET Maryland vs San Diego St (1:07 - 2nd — 65-71)
-- 01:30 PM ET Boston College vs UCF (11:23 - 2nd — 41-33)
-- 02:00 PM ET Arizona St vs South Carolina (15:48 - 2nd — 35-48)
-- 02:30 PM ET Georgetown vs Texas (2:05 - 1st — 29-34)
+- 01:00 PM ET Maryland vs San Diego St (Final — 71-75)
+- 01:30 PM ET Boston College vs UCF (0:41 - 2nd — 70-67)
+- 02:00 PM ET Arizona St vs South Carolina (1:48 - 2nd — 57-70)
+- 02:30 PM ET Georgetown vs Texas (14:38 - 2nd — 41-57)
+- 03:30 PM ET Miami vs Michigan (8:51 - 1st — 27-24)
+- 03:30 PM ET Tennessee vs Iowa State (16:58 - 1st — 3-2)
 
 ## Caveats
 
