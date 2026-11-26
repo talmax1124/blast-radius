@@ -1,6 +1,6 @@
 # CFB picks - Thanksgiving Thu 11/26/2026 + Black Friday Fri 11/27/2026
 
-Generated 2026-11-26 03:25 PM ET by `today.py`; lines = ESPN scoreboard (DraftKings) as fetched 2026-11-26T20:25:20Z. Model fit on all 1542 completed 2026 games (FBS+FCS), shrunk toward 2025 final ratings; hyperparameters frozen from the 2025 tuning in backtest.md.
+Generated 2026-11-26 03:26 PM ET by `today.py`; lines = ESPN scoreboard (DraftKings) as fetched 2026-11-26T20:25:20Z. Model fit on all 1542 completed 2026 games (FBS+FCS), shrunk toward 2025 final ratings; hyperparameters frozen from the 2025 tuning in backtest.md.
 
 ## Verdict
 
@@ -17,7 +17,7 @@ Spread columns are from the home team's view (negative = home favored). `edge` =
 | kickoff (ET) | matchup | home line | model home | edge | blend home | total | model total | edge | blend total | pick |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Thu 11/26 08:00 PM ET | TCU Horned Frogs @ Texas Tech Red Raiders | -14.0 | -11.5 | -2.5 | -13.2 | 46.5 | 51.4 | +4.9 | 49.7 | no edge |
-| Fri 11/27 12:00 PM ET | Buffalo Bulls @ Akron Zips | - | +3.5 | - | - | 47.5 | 50.9 | +3.4 | 49.8 | no edge |
+| Fri 11/27 12:00 PM ET | Buffalo Bulls @ Akron Zips | +7.5 | +3.5 | +4.0 | +6.3 | 47.5 | 50.9 | +3.4 | 49.8 | no edge |
 | Fri 11/27 12:00 PM ET | Nebraska Cornhuskers @ Iowa Hawkeyes | -3.5 | -3.7 | +0.2 | -3.6 | 40.5 | 42.7 | +2.2 | 41.9 | no edge |
 | Fri 11/27 12:00 PM ET | Toledo Rockets @ Ohio Bobcats | +3.0 | +3.4 | -0.4 | +3.1 | 45.5 | 50.7 | +5.2 | 48.9 | no edge |
 | Fri 11/27 12:00 PM ET | Mississippi State Bulldogs @ Ole Miss Rebels | -18.5 | -14.0 | -4.5 | -17.1 | 56.5 | 61.4 | +4.9 | 59.7 | no edge |
@@ -30,6 +30,8 @@ Spread columns are from the home team's view (negative = home favored). `edge` =
 | Fri 11/27 07:30 PM ET | Texas Longhorns @ Texas A&M Aggies | +11.5 | +9.2 | +2.3 | +10.8 | 40.5 | 46.8 | +6.3 | 44.6 | no edge |
 | Fri 11/27 07:30 PM ET | Minnesota Golden Gophers @ Wisconsin Badgers | -7.5 | -11.0 | +3.5 | -8.6 | 37.5 | 38.7 | +1.2 | 38.3 | no edge |
 | Fri 11/27 09:00 PM ET | West Virginia Mountaineers @ Utah Utes | -26.5 | -19.0 | -7.5 | -24.2 | 66.5 | 62.0 | -4.5 | 63.5 | no edge |
+
+Note: the totals model sits above the market on most of this slate. Late-season weather, pace and injury news are priced by the market but not by the model, and in the 2026 out-of-sample test the model's over/under leans lost (see backtest.md) - treat the totals columns as diagnostics only.
 
 Model home-field advantage: 2.92 pts; FCS group offset -33.9 vs FBS average. Points model: mu 24.5, home bump 2.77.
 

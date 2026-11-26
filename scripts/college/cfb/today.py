@@ -17,6 +17,11 @@ def parse_spread_details(g):
     """Home spread from the scoreboard odds `details` string ('TTU -14', 'EVEN')."""
     o = g.get("sb_odds") or {}
     d = (o.get("details") or "").split()
+    if o.get("spread") is not None:  # scoreboard `spread` is the home line; sanity-check sign vs details
+        v = float(o["spread"])
+        if d and d[0] == g["away_abbr"] and v < 0 or d and d[0] == g["home_abbr"] and v > 0:
+            v = -v
+        return v
     if not d:
         return None
     if d[0].upper() in ("EVEN", "PK", "PICK"):
@@ -116,6 +121,9 @@ def main():
                  f"| {fs(r['spread_edge'])} | {fs(bl)} | {r['line_total'] if r['line_total'] is not None else '-'} "
                  f"| {r['model_total']:.1f} | {fs(r['total_edge'])} | {'-' if bt is None else f'{bt:.1f}'} | {pk} |")
     L.append("")
+    L.append("Note: the totals model sits above the market on most of this slate. Late-season weather, pace and "
+             "injury news are priced by the market but not by the model, and in the 2026 out-of-sample test the "
+             "model's over/under leans lost (see backtest.md) - treat the totals columns as diagnostics only.\n")
     L.append(f"Model home-field advantage: {mm['hfa']:.2f} pts; FCS group offset {mm['groups'].get('FCS', 0):+.1f} "
              f"vs FBS average. Points model: mu {pm['mu']:.1f}, home bump {pm['hp']:.2f}.\n")
     open(os.path.join(HERE, "today.md"), "w").write("\n".join(L) + "\n")

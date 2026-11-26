@@ -206,8 +206,12 @@ def choose_rule(recs, kind, min_n=60):
 
 def main():
     os.makedirs(DATA, exist_ok=True)
-    print("tuning hyperparameters on 2025 ...", flush=True)
-    res_m, res_p = tune()
+    if "--reuse-params" in sys.argv and os.path.exists(os.path.join(DATA, "params.json")):
+        pj = json.load(open(os.path.join(DATA, "params.json")))
+        res_m, res_p = pj["margin_grid_top5"], pj["points_grid_top5"]
+    else:
+        print("tuning hyperparameters on 2025 ...", flush=True)
+        res_m, res_p = tune()
     mparams, pparams = res_m[0][1], res_p[0][1]
     print("  margin best", res_m[0], "\n  points best", res_p[0], flush=True)
     json.dump({"margin": mparams, "points": pparams,
@@ -317,6 +321,22 @@ def main():
                  f"**{'EDGE SUPPORTED' if r['edge_supported'] else 'NO EDGE'}** "
                  f"(OOS {r['oos']['w']}-{r['oos']['l']}-{r['oos']['p']}, CI low {100*r['oos']['lo']:.1f}%)")
     L.append("")
+    L.append("## Notes and caveats\n")
+    L.append("* 2025 closing lines come from ESPN BET via the core API; 2026 from DraftKings. The 2025 lines look "
+             "softer or staler (the totals model even beat their 'close' on MAE, which it never does against 2026 "
+             "DraftKings closes). That is the likeliest reason the 2025-selected rules did not carry over. 2026 vs "
+             "DraftKings is the benchmark that matters, because today's lines are DraftKings.")
+    L.append("* The model is informative about where lines MOVE (open-to-close slope > 0) and does a little better "
+             "against openers than closers. That fits a public-information model whose content the market has "
+             "already priced by kickoff. Any real use would mean betting openers early in the week, which this "
+             "Thursday/Friday slate does not allow, and that is untested out of sample here.")
+    L.append("* 2026 totals: model-minus-line has a significantly NEGATIVE slope against the close. The model leans "
+             "over (mean +1 to +2 points vs the market) and the market's late-season adjustments (weather, pace, "
+             "injuries) win.")
+    L.append("* Prior-season ratings are fit with a 28-point margin cap (DEFAULT) and are regressed by rho; FCS "
+             "teams are rated individually (FCS-vs-FCS games included) around a fitted FCS group offset.")
+    L.append("* Small-conference / non-P4 games did show better in-sample ATS in 2025, but this did not hold in 2026 "
+             "(see the segment tables), so there is no evidence of a softer-market edge we can capture with this model.\n")
     json.dump({"rules": rules, "margin_params": mparams, "points_params": pparams,
                "blend_w_spread": max(0.0, min(1.0, ols_slope(sel25, "spread")[0])),
                "blend_w_total": max(0.0, min(1.0, ols_slope(sel25, "total")[0]))},

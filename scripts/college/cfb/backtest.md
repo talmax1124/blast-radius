@@ -273,3 +273,11 @@ Same predictions, graded against ESPN's recorded opening line. `move slope` = sl
 * spread: rule = all FBS-lined games, |model-line| >= 5 -> **NO EDGE** (OOS 37-31-3, CI low 42.7%)
 * total: rule = all FBS-lined games, |model-line| >= 5 -> **NO EDGE** (OOS 34-64-0, CI low 26.0%)
 
+## Notes and caveats
+
+* 2025 closing lines come from ESPN BET via the core API; 2026 from DraftKings. The 2025 lines look softer or staler (the totals model even beat their 'close' on MAE, which it never does against 2026 DraftKings closes). That is the likeliest reason the 2025-selected rules did not carry over. 2026 vs DraftKings is the benchmark that matters, because today's lines are DraftKings.
+* The model is informative about where lines MOVE (open-to-close slope > 0) and does a little better against openers than closers. That fits a public-information model whose content the market has already priced by kickoff. Any real use would mean betting openers early in the week, which this Thursday/Friday slate does not allow, and that is untested out of sample here.
+* 2026 totals: model-minus-line has a significantly NEGATIVE slope against the close. The model leans over (mean +1 to +2 points vs the market) and the market's late-season adjustments (weather, pace, injuries) win.
+* Prior-season ratings are fit with a 28-point margin cap (DEFAULT) and are regressed by rho; FCS teams are rated individually (FCS-vs-FCS games included) around a fitted FCS group offset.
+* Small-conference / non-P4 games did show better in-sample ATS in 2025, but this did not hold in 2026 (see the segment tables), so there is no evidence of a softer-market edge we can capture with this model.
+
