@@ -25,6 +25,41 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    // Second pass dropped Smack under and Corum over 55.5; Corum ran for 184. Watson left injured in the 1st half.
+    date: "2026-11-25",
+    title: "GB@LAR 4-man (after the second pass)",
+    result: "miss",
+    legs: [
+      { name: "Tucker Kraft", market: "receptions", side: "under", line: 4.5, actual: 3, result: "hit" },
+      { name: "Matthew Golden", market: "receptions", side: "over", line: 5.5, actual: 1, result: "miss" },
+      { name: "Jordan Love", market: "passing yards", side: "over", line: 273.5, actual: 198, result: "miss" },
+      { name: "Matthew Stafford", market: "passing yards", side: "under", line: 238.5, actual: 140, result: "hit" },
+    ],
+  },
+  {
+    // Singles recommended: 2 of 3 cashed.
+    date: "2026-11-25",
+    title: "GB@LAR anytime TDs",
+    result: "miss",
+    legs: [
+      { name: "Blake Corum", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
+      { name: "Matthew Golden", market: "anytime touchdown", side: "over", line: 0.5, actual: 0, result: "miss" },
+      { name: "Christian Watson", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
+    ],
+  },
+  {
+    // Green Bay was shut out in the 2nd half; Golden and Kyren had no 2nd-half catches.
+    date: "2026-11-25",
+    title: "GB@LAR 2H slip (after Watson injury)",
+    result: "miss",
+    legs: [
+      { name: "Packers at Rams", market: "2H total points", side: "over", line: 9.5, actual: 13, result: "hit" },
+      { name: "Matthew Golden", market: "receptions", side: "over", line: 1.5, actual: 1, result: "miss" },
+      { name: "Kyren Williams", market: "receptions", side: "over", line: 4.5, actual: 4, result: "miss" },
+      { name: "Matthew Stafford", market: "passing yards", side: "under", line: 238.5, actual: 140, result: "hit" },
+    ],
+  },
+  {
     // Nov 24. The two sides DraftKings juiced hardest (about 60%) that also hit 8+ of the last 10. Tatum over 2.5 threes was the named alternate (hit, 6).
     date: "2026-11-24",
     title: "NBA 2 most-confident: Gordon under 2.5 assists + Dybantsa under 1.5 threes",
