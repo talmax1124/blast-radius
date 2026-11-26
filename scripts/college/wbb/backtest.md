@@ -1,6 +1,6 @@
 # WBB (NCAA D-I women's basketball) model — walk-forward backtest
 
-Generated 2026-11-26 by `scripts/college/wbb/backtest.py` (238s). Data: ESPN scoreboard (groups=50) + core odds API (closing line; DraftKings preferred, else ESPN BET).
+Generated 2026-11-26 by `scripts/college/wbb/backtest.py` (10s). Data: ESPN scoreboard (groups=50) + core odds API (closing line; DraftKings preferred, else ESPN BET).
 
 ## Data & line coverage
 
@@ -171,3 +171,6 @@ On 736 games with closing moneylines: Brier model 0.1631 vs no-vig market 0.1574
 - Only ~15% of D-I WBB games have an ESPN-recorded line; lined games skew to high-major / TV games, which are the most efficiently priced.
 - Hundreds of bets give a 95% CI of roughly ±5 percentage points on win%; a real but small edge (53–55%) cannot be confirmed or excluded at this sample size.
 - Hyper-parameters were tuned on un-lined games' margins (no use of lines or lined results), so ATS numbers are out-of-sample; the threshold was chosen on the earlier half only.
+- The model's margins are compressed vs. the market on blowout-type lined games (e.g. LSU/UConn vs low-majors: model +27 to +40 where the close was +50 to +75 and the result landed nearer the line). Regressing actual on predicted margin gives a slope ≈1.0 on un-lined games but ≈1.2–1.3 on lined games, so most 'edges' are just the model under-rating elite teams early in the season — a known weakness, not information.
+- 2026-27 is only two weeks old: priors (last season × rho) are weak after portal/graduation turnover, and the line (MAE ~10.4) is far better than the model (MAE ~14.4). The win-prob map is also overconfident out of sample early in the season (e.g. 85% bin won 79%).
+- Market efficiency check: the 'info slope' of the model's disagreement with the close is +0.07 ± 0.08 over a full season — statistically indistinguishable from zero. The closing line already contains everything this rating model knows.
