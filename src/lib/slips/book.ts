@@ -14,6 +14,11 @@ export type BookLeg = {
   /** Hard Rock price taken, American odds, and the other side when it was posted. Scores the model against the book. */
   price?: number;
   opposite?: number;
+  /**
+   * The chance stated for a pick that did not come from the sim (game logs, book juice, injuries, weather).
+   * Scored on its own scorecard and never used to fit the sim's trust factors.
+   */
+  lean?: { sport: Sport; p: number };
 };
 
 export type BookCard = {
@@ -30,12 +35,12 @@ export const BOOK: BookCard[] = [
     title: "Placed: Hard Rock 6-leg SGP Max (Gibbs, Cook, Emmett, Javonte TDs + Gibbs yards + Mahomes)",
     result: "miss",
     legs: [
-      { name: "Jahmyr Gibbs", market: "rushing yards", side: "over", line: 92.5, actual: 205, result: "hit" },
-      { name: "Jahmyr Gibbs", market: "anytime touchdown", side: "over", line: 0.5, actual: 3, result: "hit" },
-      { name: "James Cook III", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
-      { name: "Emmett Johnson", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
-      { name: "Patrick Mahomes", market: "passing yards", side: "over", line: 236.5, actual: 174, result: "miss" },
-      { name: "Javonte Williams", market: "anytime touchdown", side: "over", line: 0.5, actual: 3, result: "hit", price: -185 },
+      { name: "Jahmyr Gibbs", market: "rushing yards", side: "over", line: 92.5, actual: 205, result: "hit", lean: { sport: "nfl", p: 0.62 } },
+      { name: "Jahmyr Gibbs", market: "anytime touchdown", side: "over", line: 0.5, actual: 3, result: "hit", lean: { sport: "nfl", p: 0.66 } },
+      { name: "James Cook III", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit", lean: { sport: "nfl", p: 0.64 } },
+      { name: "Emmett Johnson", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit", lean: { sport: "nfl", p: 0.45 } },
+      { name: "Patrick Mahomes", market: "passing yards", side: "over", line: 236.5, actual: 174, result: "miss", lean: { sport: "nfl", p: 0.6 } },
+      { name: "Javonte Williams", market: "anytime touchdown", side: "over", line: 0.5, actual: 3, result: "hit", price: -185, lean: { sport: "nfl", p: 0.58 } },
     ],
   },
   {
@@ -44,11 +49,11 @@ export const BOOK: BookCard[] = [
     title: "Placed: Chalkboard KC@BUF 5-pick (won 4.35x)",
     result: "hit",
     legs: [
-      { name: "Emmett Johnson", market: "rushing yards", side: "under", line: 89.5, actual: 72, result: "hit" },
-      { name: "Travis Kelce", market: "receptions", side: "under", line: 4.5, actual: 4, result: "hit" },
-      { name: "Keon Coleman", market: "receiving yards", side: "under", line: 29.5, actual: 0, result: "hit" },
-      { name: "Khalil Shakir", market: "receiving yards", side: "over", line: 29.5, actual: 33, result: "hit" },
-      { name: "James Cook III", market: "rush + rec touchdowns", side: "over", line: 0.5, actual: 1, result: "hit" },
+      { name: "Emmett Johnson", market: "rushing yards", side: "under", line: 89.5, actual: 72, result: "hit", lean: { sport: "nfl", p: 0.68 } },
+      { name: "Travis Kelce", market: "receptions", side: "under", line: 4.5, actual: 4, result: "hit", lean: { sport: "nfl", p: 0.65 } },
+      { name: "Keon Coleman", market: "receiving yards", side: "under", line: 29.5, actual: 0, result: "hit", lean: { sport: "nfl", p: 0.62 } },
+      { name: "Khalil Shakir", market: "receiving yards", side: "over", line: 29.5, actual: 33, result: "hit", lean: { sport: "nfl", p: 0.62 } },
+      { name: "James Cook III", market: "rush + rec touchdowns", side: "over", line: 0.5, actual: 1, result: "hit", lean: { sport: "nfl", p: 0.64 } },
     ],
   },
   {
@@ -70,7 +75,7 @@ export const BOOK: BookCard[] = [
     result: "miss",
     legs: [
       { name: "Patrick Mahomes", market: "passing yards", side: "over", line: 236.5, actual: 174, result: "miss" },
-      { name: "Saquon Barkley", market: "rushing yards", side: "under", line: 66.5, actual: 7, result: "hit" },
+      { name: "Saquon Barkley", market: "rushing yards", side: "under", line: 66.5, actual: 7, result: "hit", lean: { sport: "nfl", p: 0.6 } },
       { name: "Jahmyr Gibbs", market: "rushing yards", side: "over", line: 93.5, actual: 205, result: "hit" },
     ],
   },
@@ -104,9 +109,9 @@ export const BOOK: BookCard[] = [
     result: "miss",
     legs: [
       { name: "Mantas Juzenas", market: "rebounds", side: "over", line: 7.5, actual: null, result: "void" },
-      { name: "Donovan Dent", market: "assists", side: "over", line: 7.5, actual: 9, result: "hit" },
-      { name: "Abdi Bashir Jr.", market: "threes", side: "over", line: 2.5, actual: 1, result: "miss" },
-      { name: "Quinn Ellis", market: "assists", side: "over", line: 6.5, actual: 6, result: "miss" },
+      { name: "Donovan Dent", market: "assists", side: "over", line: 7.5, actual: 9, result: "hit", lean: { sport: "nba", p: 0.62 } },
+      { name: "Abdi Bashir Jr.", market: "threes", side: "over", line: 2.5, actual: 1, result: "miss", lean: { sport: "nba", p: 0.62 } },
+      { name: "Quinn Ellis", market: "assists", side: "over", line: 6.5, actual: 6, result: "miss", lean: { sport: "nba", p: 0.6 } },
     ],
   },
   {

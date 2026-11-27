@@ -108,3 +108,15 @@ export function scorecard(legs: ScoredLeg[]): Scorecard {
     markets: [...byMarket].map(([key, m]) => ({ key, ...m })).sort((a, b) => b.n - a.n),
   };
 }
+
+/**
+ * Picks that did not come from the sim (game logs, book juice, injuries, weather) with the chance stated
+ * when they were given. Scored separately so they never move the sim's calibration.
+ */
+export function leanLegs(book: BookCard[]): ScoredLeg[] {
+  return book.flatMap((c) =>
+    c.legs
+      .filter((l) => l.lean && (l.result === "hit" || l.result === "miss"))
+      .map((l) => ({ sport: l.lean!.sport, market: `${l.lean!.sport} ${l.market}`, p: l.lean!.p, result: l.result as "hit" | "miss" })),
+  );
+}
