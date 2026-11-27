@@ -25,6 +25,64 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    // Picked from season TD logs + workload checks; Hurts on IR, Walker out.
+    date: "2026-11-26",
+    title: "Thanksgiving anytime TD 4-man",
+    result: "hit",
+    legs: [
+      { name: "Jahmyr Gibbs", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
+      { name: "James Cook III", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
+      { name: "Javonte Williams", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
+      { name: "Emmett Johnson", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
+    ],
+  },
+  {
+    // Rain in Buffalo held Mahomes to 174.
+    date: "2026-11-26",
+    title: "Thanksgiving 3 player props",
+    result: "miss",
+    legs: [
+      { name: "Patrick Mahomes", market: "passing yards", side: "over", line: 236.5, actual: 174, result: "miss" },
+      { name: "Saquon Barkley", market: "rushing yards", side: "under", line: 66.5, actual: 7, result: "hit" },
+      { name: "Jahmyr Gibbs", market: "rushing yards", side: "over", line: 93.5, actual: 205, result: "hit" },
+    ],
+  },
+  {
+    // Rain game (BUF 13-10). Cook more 87.5 (unavailable on Chalkboard) ran for 117.
+    date: "2026-11-26",
+    title: "KC@BUF Chalkboard 4-man (Shakir swapped in for Cook)",
+    result: "miss",
+    legs: [
+      { name: "Emmett Johnson", market: "rushing yards", side: "under", line: 81.5, actual: 72, result: "hit" },
+      { name: "Travis Kelce", market: "receptions", side: "under", line: 4.5, actual: 4, result: "hit" },
+      { name: "Keon Coleman", market: "receiving yards", side: "under", line: 21.5, actual: 0, result: "hit" },
+      { name: "Khalil Shakir", market: "receiving yards", side: "over", line: 36.5, actual: 33, result: "miss" },
+    ],
+  },
+  {
+    // Model gap 8+ rule; small singles recommended.
+    date: "2026-11-26",
+    title: "CBB totals (team model, weak edge)",
+    result: "miss",
+    legs: [
+      { name: "Saint Mary's vs UCLA", market: "total points", side: "over", line: 152.5, actual: 155, result: "hit" },
+      { name: "Jax State vs UC Davis", market: "total points", side: "over", line: 137.5, actual: 131, result: "miss" },
+      { name: "Alabama vs Kansas St", market: "total points", side: "under", line: 169.5, actual: 195, result: "miss" },
+    ],
+  },
+  {
+    // Thresholds from recent logs; Juzenas did not play.
+    date: "2026-11-26",
+    title: "CBB player picks (game logs, no lines)",
+    result: "miss",
+    legs: [
+      { name: "Mantas Juzenas", market: "rebounds", side: "over", line: 7.5, actual: null, result: "void" },
+      { name: "Donovan Dent", market: "assists", side: "over", line: 7.5, actual: 9, result: "hit" },
+      { name: "Abdi Bashir Jr.", market: "threes", side: "over", line: 2.5, actual: 1, result: "miss" },
+      { name: "Quinn Ellis", market: "assists", side: "over", line: 6.5, actual: 6, result: "miss" },
+    ],
+  },
+  {
     // Nov 25. Heavy-juice sides (59-64% per DraftKings) that also hit 8+ of the last 10. Sabonis was the optional 5th leg.
     date: "2026-11-25",
     title: "SAC@GS 4-man (+ optional Sabonis)",
