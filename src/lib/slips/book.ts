@@ -25,6 +25,33 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    // Placed on Hard Rock (SGP Max, $10 at +1553). Lost only on Mahomes: the rain forecast (found later that day) argued against his over, and it was not pulled from this slip.
+    date: "2026-11-26",
+    title: "Placed: Hard Rock 6-leg SGP Max (Gibbs, Cook, Emmett, Javonte TDs + Gibbs yards + Mahomes)",
+    result: "miss",
+    legs: [
+      { name: "Jahmyr Gibbs", market: "rushing yards", side: "over", line: 92.5, actual: 205, result: "hit" },
+      { name: "Jahmyr Gibbs", market: "anytime touchdown", side: "over", line: 0.5, actual: 3, result: "hit" },
+      { name: "James Cook III", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
+      { name: "Emmett Johnson", market: "anytime touchdown", side: "over", line: 0.5, actual: 1, result: "hit" },
+      { name: "Patrick Mahomes", market: "passing yards", side: "over", line: 236.5, actual: 174, result: "miss" },
+      { name: "Javonte Williams", market: "anytime touchdown", side: "over", line: 0.5, actual: 3, result: "hit", price: -185 },
+    ],
+  },
+  {
+    // Placed on Chalkboard ($10 free entry, 5 picks, 4.35x): WON $43.50. Chalkboard's lines were softer than DraftKings' on three picks.
+    date: "2026-11-26",
+    title: "Placed: Chalkboard KC@BUF 5-pick (won 4.35x)",
+    result: "hit",
+    legs: [
+      { name: "Emmett Johnson", market: "rushing yards", side: "under", line: 89.5, actual: 72, result: "hit" },
+      { name: "Travis Kelce", market: "receptions", side: "under", line: 4.5, actual: 4, result: "hit" },
+      { name: "Keon Coleman", market: "receiving yards", side: "under", line: 29.5, actual: 0, result: "hit" },
+      { name: "Khalil Shakir", market: "receiving yards", side: "over", line: 29.5, actual: 33, result: "hit" },
+      { name: "James Cook III", market: "rush + rec touchdowns", side: "over", line: 0.5, actual: 1, result: "hit" },
+    ],
+  },
+  {
     // Picked from season TD logs + workload checks; Hurts on IR, Walker out.
     date: "2026-11-26",
     title: "Thanksgiving anytime TD 4-man",
