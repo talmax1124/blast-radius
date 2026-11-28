@@ -30,6 +30,101 @@ export type BookCard = {
 
 export const BOOK: BookCard[] = [
   {
+    // Placed on Kalshi (6-market combo, $4.81 to win $79.11, bought at halftime 24-5). Missed on the two legs flagged as weakest:
+    // Warren needed 31 2H yards at 2.4 a carry (got 22), and Denver's offense never reached the end zone.
+    date: "2026-11-27",
+    title: "Placed: Kalshi DEN@PIT 6-market combo",
+    result: "miss",
+    legs: [
+      { name: "Steelers", market: "moneyline", side: "over", line: 0.5, actual: 1, result: "hit", lean: { sport: "nfl", p: 0.91 } },
+      { name: "Mason Rudolph", market: "passing yards", side: "under", line: 199.5, actual: 142, result: "hit", lean: { sport: "nfl", p: 0.88 } },
+      { name: "Jaylen Waddle", market: "receiving yards", side: "over", line: 29.5, actual: 53, result: "hit", lean: { sport: "nfl", p: 0.72 } },
+      { name: "Jaylen Warren", market: "rush + rec yards", side: "over", line: 54.5, actual: 46, result: "miss", lean: { sport: "nfl", p: 0.48 } },
+      { name: "Jonah Coleman", market: "anytime touchdown", side: "over", line: 0.5, actual: 0, result: "miss", lean: { sport: "nfl", p: 0.33 } },
+      { name: "DEN@PIT", market: "total points", side: "under", line: 49.5, actual: 32, result: "hit", lean: { sport: "nfl", p: 0.6 } },
+    ],
+  },
+  {
+    // Halftime 24-5; lines are our estimates (Hard Rock's 2H menu was not reachable). Only the Coleman TD missed.
+    // The no-TD alternative (Nix 2H pass yds over 115.5: 102; Coleman 2H rec over 12.5: 30) would have missed on Nix.
+    date: "2026-11-27",
+    title: "DEN@PIT 2H props (passing/receiving/TD), estimated lines",
+    result: "miss",
+    legs: [
+      { name: "Mason Rudolph", market: "2H passing yards", side: "under", line: 80.5, actual: 38, result: "hit" },
+      { name: "Jaylen Warren", market: "2H rush + rec yards", side: "over", line: 20.5, actual: 22, result: "hit" },
+      { name: "Jaylen Waddle", market: "2H receiving yards", side: "over", line: 24.5, actual: 36, result: "hit" },
+      { name: "Jonah Coleman", market: "2H anytime touchdown", side: "over", line: 0.5, actual: 0, result: "miss" },
+    ],
+  },
+  {
+    // Halftime 24-5; the two game lines were DraftKings live, the three 2H props our estimates. Not placed (Hard Rock lacked these markets).
+    date: "2026-11-27",
+    title: "DEN@PIT 2H slip (live spread/total + 2H volume props), estimated prop lines",
+    result: "hit",
+    legs: [
+      { name: "Steelers", market: "live spread", side: "over", line: 11.5, actual: 22, result: "hit" },
+      { name: "DEN@PIT", market: "total points (live)", side: "under", line: 47.5, actual: 32, result: "hit" },
+      { name: "Jaylen Warren", market: "2H rushing attempts", side: "over", line: 7.5, actual: 10, result: "hit" },
+      { name: "Jonah Coleman", market: "2H rushing yards", side: "under", line: 17.5, actual: 17, result: "hit" },
+      { name: "Bo Nix", market: "2H passing attempts", side: "over", line: 19.5, actual: 22, result: "hit" },
+    ],
+  },
+  {
+    // Metcalf beat his under with a 22-yard TD in the 1st quarter; Denver trailing all day pushed Waddle over. Low unders on a team's No. 1 WR are now off the menu.
+    date: "2026-11-27",
+    title: "DEN@PIT 4-man (receiving unders)",
+    result: "miss",
+    legs: [
+      { name: "Jaylen Waddle", market: "receiving yards", side: "under", line: 45.5, actual: 53, result: "miss" },
+      { name: "Courtland Sutton", market: "receiving yards", side: "under", line: 26.5, actual: 4, result: "hit" },
+      { name: "DK Metcalf", market: "receiving yards", side: "under", line: 27.5, actual: 36, result: "miss" },
+      { name: "Pat Freiermuth", market: "receiving yards", side: "under", line: 22.5, actual: 1, result: "hit" },
+      { name: "Jonah Coleman", market: "rushing yards (swap option)", side: "under", line: 75.5, actual: 26, result: "hit" },
+      { name: "Jonah Coleman", market: "anytime touchdown (add-on)", side: "over", line: 0.5, actual: 0, result: "miss" },
+    ],
+  },
+  {
+    // Placed on Chalkboard with the $5 free entry (5 picks, 8.2x). Adebayo dropped (7 rebounds: would have missed).
+    date: "2026-11-27",
+    title: "Placed: Chalkboard NHL + NBA 5-pick (free entry)",
+    result: "miss",
+    legs: [
+      { name: "Matthew Tkachuk", market: "points", side: "over", line: 0.5, actual: 2, result: "hit", lean: { sport: "nhl", p: 0.74 } },
+      { name: "Brandon Hagel", market: "shots on goal", side: "over", line: 2.5, actual: 1, result: "miss", lean: { sport: "nhl", p: 0.7 } },
+      { name: "Brock Boeser", market: "points", side: "over", line: 0.5, actual: 0, result: "miss", lean: { sport: "nhl", p: 0.69 } },
+      { name: "Kirill Kaprizov", market: "assists", side: "over", line: 0.5, actual: 0, result: "miss", lean: { sport: "nhl", p: 0.67 } },
+      { name: "Davion Mitchell", market: "assists", side: "over", line: 6.5, actual: 9, result: "hit", lean: { sport: "nba", p: 0.64 } },
+    ],
+  },
+  {
+    // Placed on Hard Rock (5 legs at +840). Avdija went 0-for-6 from three; Larsson had 1 rebound in 30 minutes.
+    date: "2026-11-27",
+    title: "Placed: Hard Rock NBA Slip B (GS@POR, MIA@NY, LAL@SA)",
+    result: "miss",
+    legs: [
+      { name: "Donovan Clingan", market: "assists", side: "over", line: 1.5, actual: 2, result: "hit", price: -171, lean: { sport: "nba", p: 0.59 } },
+      { name: "Deni Avdija", market: "threes", side: "over", line: 1.5, actual: 0, result: "miss", price: -157, lean: { sport: "nba", p: 0.57 } },
+      { name: "Pelle Larsson", market: "rebounds", side: "over", line: 2.5, actual: 1, result: "miss", price: -149, lean: { sport: "nba", p: 0.56 } },
+      { name: "Davion Mitchell", market: "threes", side: "over", line: 1.5, actual: 1, result: "miss", price: -164, lean: { sport: "nba", p: 0.58 } },
+      { name: "Victor Wembanyama", market: "assists", side: "under", line: 3.5, actual: 2, result: "hit", lean: { sport: "nba", p: 0.59 } },
+    ],
+  },
+  {
+    // Not placed (Hard Rock +393 for 4; Chalkboard only 3.22x). Camara hit 4 threes; the 5th/6th add-ons Castle and Wiggins both hit.
+    date: "2026-11-27",
+    title: "NBA Slip A (book juice + last-10 logs) with Castle/Wiggins add-ons",
+    result: "miss",
+    legs: [
+      { name: "Bam Adebayo", market: "threes", side: "under", line: 1.5, actual: 1, result: "hit", price: -224, lean: { sport: "nba", p: 0.65 } },
+      { name: "Bobby Portis", market: "threes", side: "over", line: 0.5, actual: 1, result: "hit", price: -210, lean: { sport: "nba", p: 0.64 } },
+      { name: "Toumani Camara", market: "threes", side: "under", line: 2.5, actual: 4, result: "miss", price: -195, lean: { sport: "nba", p: 0.62 } },
+      { name: "Victor Wembanyama", market: "threes", side: "over", line: 1.5, actual: 2, result: "hit", price: -183, lean: { sport: "nba", p: 0.61 } },
+      { name: "Stephon Castle", market: "threes", side: "over", line: 1.5, actual: 4, result: "hit", price: -159, lean: { sport: "nba", p: 0.575 } },
+      { name: "Andrew Wiggins", market: "threes", side: "over", line: 0.5, actual: 1, result: "hit", price: -221, lean: { sport: "nba", p: 0.65 } },
+    ],
+  },
+  {
     // Placed on Hard Rock (SGP Max, $10 at +1553). Lost only on Mahomes: the rain forecast (found later that day) argued against his over, and it was not pulled from this slip.
     date: "2026-11-26",
     title: "Placed: Hard Rock 6-leg SGP Max (Gibbs, Cook, Emmett, Javonte TDs + Gibbs yards + Mahomes)",
