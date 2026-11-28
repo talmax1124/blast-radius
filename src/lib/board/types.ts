@@ -27,6 +27,14 @@ export type BoardSlip = {
   title: string;
   sweep: number;
   legs: BoardLeg[];
+  /** Return per unit on a power card and a flex card. 1 is break-even. */
+  power: number | null;
+  flex: number | null;
+  /** Best-mode return with every leg cut 3 points. */
+  stressed: number | null;
+  play: "power" | "flex" | "pass";
+  /** P(exactly k hits). Index is k. */
+  dist: number[];
 };
 
 export type HeatCell = {
